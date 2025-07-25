@@ -729,8 +729,8 @@
       if ('webkitSpeechRecognition' in window) {
         try {
           recognition = new webkitSpeechRecognition();
-          recognition.continuous = true;  // Keep recording until manually stopped
-          recognition.interimResults = true;
+          recognition.continuous = false;  // Single utterance mode
+          recognition.interimResults = false;  // Only final results
           recognition.lang = 'en-US';
           recognition.maxAlternatives = 1;
           
@@ -752,26 +752,19 @@
         };
         
         recognition.onresult = (event) => {
-          let finalTranscript = '';
-          let interimTranscript = '';
+          console.log('Speech recognition result:', event);
           
-          for (let i = event.resultIndex; i < event.results.length; i++) {
-            const transcript = event.results[i][0].transcript;
-            if (event.results[i].isFinal) {
-              finalTranscript += transcript;
-            } else {
-              interimTranscript += transcript;
+          if (event.results.length > 0) {
+            const result = event.results[0];
+            if (result.isFinal) {
+              const transcript = result[0].transcript;
+              console.log('Final transcript:', transcript);
+              
+              if (transcript && currentRecording) {
+                sendDictatedText(currentRecording.pid, currentRecording.tty, transcript);
+              }
             }
           }
-          
-          // Send final transcripts immediately
-          if (finalTranscript && currentRecording) {
-            sendDictatedText(currentRecording.pid, currentRecording.tty, finalTranscript);
-          }
-          
-          // Show real-time transcription (optional - could add UI for this)
-          console.log('Interim:', interimTranscript);
-          console.log('Final:', finalTranscript);
         };
         
         recognition.onerror = (event) => {
@@ -810,21 +803,11 @@
         recognition.onend = () => {
           console.log('Voice recognition ended');
           isRecognitionActive = false;
-          // If we still have an active recording, restart recognition
-          if (currentRecording && !isRecognitionActive) {
-            console.log('Restarting recognition for continuous recording');
-            setTimeout(() => {
-              if (currentRecording) {
-                try {
-                  recognition.start();
-                } catch (error) {
-                  console.error('Failed to restart recognition:', error);
-                  stopRecording();
-                }
-              }
-            }, 100); // Small delay to prevent rapid restarts
-          } else {
-            updateRecordingUI(false);
+          updateRecordingUI(false);
+          // Don't auto-restart, let the user click again if needed
+          if (currentRecording) {
+            console.log('Recognition ended while recording was active');
+            currentRecording = null;
           }
         };
       } else {
@@ -835,6 +818,8 @@
     
     // Toggle voice dictation for a specific instance
     function toggleVoiceDictation(pid, tty) {
+      console.log('toggleVoiceDictation called for PID:', pid);
+      
       if (!recognition) {
         initSpeechRecognition();
       }
@@ -858,23 +843,28 @@
       // Start recording for this instance
       currentRecording = { pid, tty };
       
+      // Prevent multiple starts
+      if (isRecognitionActive) {
+        console.log('Recognition already active, skipping start');
+        return;
+      }
+      
       try {
         console.log('About to start recognition for PID:', pid);
         console.log('Recognition object:', recognition);
         console.log('Is recognition active?', isRecognitionActive);
         recognition.start();
-        console.log('Started recording for PID:', pid);
+        console.log('Recognition.start() called successfully');
       } catch (error) {
         console.error('Failed to start recognition:', error);
-        console.error('Error details:', error.name, error.message);
-        // Silently fail if already started
-        if (error.message && error.message.includes('already started')) {
-          // Recognition is already running, which is fine
-          updateRecordingUI(true); // Make sure UI is updated even if already started
-          return;
-        }
-        alert(`Failed to start voice dictation: ${error.message}`);
+        console.error('Error details:', error.name, error.message, error.stack);
         currentRecording = null;
+        
+        if (error.name === 'InvalidStateError') {
+          alert('Voice recognition is already running. Please try again.');
+        } else {
+          alert(`Failed to start voice dictation: ${error.message}`);
+        }
       }
     }
     
