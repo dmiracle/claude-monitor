@@ -27,13 +27,25 @@ function createWindow() {
   }
   
   // Handle permission requests (for microphone access)
-  mainWindow.webContents.session.setPermissionRequestHandler((webContents, permission, callback) => {
-    if (permission === 'media') {
+  mainWindow.webContents.session.setPermissionRequestHandler((webContents, permission, callback, details) => {
+    console.log('Permission requested:', permission, details);
+    if (permission === 'media' || permission === 'mediaDevices' || permission === 'audioCapture') {
       // Always grant microphone permission for voice dictation
+      console.log('Granting media permission');
       callback(true);
     } else {
+      console.log('Denying permission:', permission);
       callback(false);
     }
+  });
+  
+  // Also handle permission check requests
+  mainWindow.webContents.session.setPermissionCheckHandler((webContents, permission, requestingOrigin, details) => {
+    console.log('Permission check:', permission, requestingOrigin, details);
+    if (permission === 'media' || permission === 'mediaDevices' || permission === 'audioCapture') {
+      return true;
+    }
+    return false;
   });
 }
 

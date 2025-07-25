@@ -723,16 +723,22 @@
     
     // Initialize Web Speech API
     function initSpeechRecognition() {
+      console.log('Initializing speech recognition...');
+      console.log('webkitSpeechRecognition available?', 'webkitSpeechRecognition' in window);
+      
       if ('webkitSpeechRecognition' in window) {
-        recognition = new webkitSpeechRecognition();
-        recognition.continuous = true;  // Keep recording until manually stopped
-        recognition.interimResults = true;
-        recognition.lang = 'en-US';
-        recognition.maxAlternatives = 1;
-        
-        // Additional settings to prevent auto-stop
-        recognition.grammars = undefined;
-        recognition.serviceURI = undefined;
+        try {
+          recognition = new webkitSpeechRecognition();
+          recognition.continuous = true;  // Keep recording until manually stopped
+          recognition.interimResults = true;
+          recognition.lang = 'en-US';
+          recognition.maxAlternatives = 1;
+          
+          console.log('Speech recognition initialized successfully');
+        } catch (error) {
+          console.error('Error creating speech recognition:', error);
+          return;
+        }
         
         recognition.onstart = () => {
           console.log('Voice recognition started');
@@ -769,7 +775,14 @@
         };
         
         recognition.onerror = (event) => {
-          console.error('Speech recognition error:', event.error);
+          console.error('Speech recognition error:', event.error, event);
+          console.error('Error details:', {
+            error: event.error,
+            message: event.message,
+            type: event.type,
+            timeStamp: event.timeStamp
+          });
+          
           if (event.error === 'not-allowed') {
             alert('Microphone permission denied. Please allow microphone access and try again.');
             stopRecording();
@@ -787,7 +800,10 @@
           } else {
             // Other errors, stop recording
             console.error('Unhandled recognition error:', event.error);
-            stopRecording();
+            // Don't stop on network errors
+            if (event.error !== 'network') {
+              stopRecording();
+            }
           }
         };
         
@@ -843,17 +859,21 @@
       currentRecording = { pid, tty };
       
       try {
+        console.log('About to start recognition for PID:', pid);
+        console.log('Recognition object:', recognition);
+        console.log('Is recognition active?', isRecognitionActive);
         recognition.start();
         console.log('Started recording for PID:', pid);
       } catch (error) {
         console.error('Failed to start recognition:', error);
+        console.error('Error details:', error.name, error.message);
         // Silently fail if already started
         if (error.message && error.message.includes('already started')) {
           // Recognition is already running, which is fine
           updateRecordingUI(true); // Make sure UI is updated even if already started
           return;
         }
-        alert('Failed to start voice dictation. Please try again.');
+        alert(`Failed to start voice dictation: ${error.message}`);
         currentRecording = null;
       }
     }
