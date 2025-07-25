@@ -700,3 +700,77 @@ ipcMain.handle('update-window-height', async (event, instanceCount) => {
     return { success: false, error: error.message };
   }
 });
+
+// IPC handler to get detailed instance information
+ipcMain.handle('get-instance-details', async (event, pid, workingDirectory) => {
+  try {
+    const details = {
+      mcpTools: []
+    };
+    
+    // Try to find MCP configuration file
+    const fs = require('fs');
+    const path = require('path');
+    
+    // Look for Claude configuration
+    const possibleConfigPaths = [
+      path.join(workingDirectory, '.claude', 'claude_desktop_config.json'),
+      path.join(workingDirectory, 'claude_desktop_config.json'),
+      path.join(require('os').homedir(), '.claude', 'claude_desktop_config.json')
+    ];
+    
+    for (const configPath of possibleConfigPaths) {
+      try {
+        if (fs.existsSync(configPath)) {
+          const configContent = fs.readFileSync(configPath, 'utf8');
+          const config = JSON.parse(configContent);
+          
+          // Extract MCP tools from config
+          if (config.mcpServers) {
+            for (const [serverName, serverConfig] of Object.entries(config.mcpServers)) {
+              details.mcpTools.push({
+                name: serverName,
+                type: serverConfig.command ? 'Local Server' : 'Remote Server',
+                command: serverConfig.command,
+                args: serverConfig.args
+              });
+            }
+          }
+          
+          break; // Found config, stop searching
+        }
+      } catch (error) {
+        console.error(`Error reading config from ${configPath}:`, error);
+      }
+    }
+    
+    // Get additional process info
+    const psInfo = spawn('ps', ['-p', pid.toString(), '-o', 'rss,vsz,comm']);
+    let psOutput = '';
+    
+    psInfo.stdout.on('data', (data) => {
+      psOutput += data.toString();
+    });
+    
+    await new Promise((resolve) => {
+      psInfo.on('close', () => {
+        const lines = psOutput.split('\n');
+        if (lines.length > 1) {
+          const parts = lines[1].trim().split(/\s+/);
+          if (parts.length >= 3) {
+            details.memoryInfo = {
+              rss: parseInt(parts[0]) * 1024, // Convert KB to bytes
+              vsz: parseInt(parts[1]) * 1024
+            };
+          }
+        }
+        resolve();
+      });
+    });
+    
+    return details;
+  } catch (error) {
+    console.error('Error getting instance details:', error);
+    return { mcpTools: [] };
+  }
+});
