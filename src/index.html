@@ -589,6 +589,12 @@
       gap: 4px;
     }
     
+    .tile-buttons {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
+    
     .tile-info {
       display: flex;
       flex-direction: column;
@@ -674,6 +680,45 @@
     .tile-voice-btn.recording {
       background: #f44336;
       animation: pulse 1.5s infinite;
+    }
+    
+    .activate-btn {
+      background: #2196F3;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      margin-left: 8px;
+      transition: all 0.2s ease;
+    }
+    
+    .activate-btn:hover {
+      background: #1976D2;
+      transform: translateY(-1px);
+    }
+    
+    .tile-activate-btn {
+      background: #2196F3;
+      color: white;
+      border: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+      margin-left: 4px;
+    }
+    
+    .tile-activate-btn:hover {
+      background: #1976D2;
+      transform: scale(1.1);
     }
   </style>
 </head>
@@ -912,6 +957,41 @@
       }, type === 'error' ? 3000 : 2000);
     }
     
+    // Activate window for a process
+    async function activateWindow(pid, tty, workingDirectory) {
+      try {
+        if (!tty || tty === '??') {
+          console.log(`Spawning iTerm2 window for headless process ${pid}`);
+        } else {
+          console.log(`Activating window for process ${pid} (TTY: ${tty})`);
+        }
+        
+        const result = await ipcRenderer.invoke('activate-window', pid, tty, workingDirectory);
+        console.log('Window activation result:', result);
+        
+        // Visual feedback
+        const instanceEl = document.querySelector(`.instance[data-pid="${pid}"]`);
+        if (instanceEl) {
+          instanceEl.style.background = '#0066cc';
+          setTimeout(() => {
+            instanceEl.style.background = '';
+          }, 200);
+        }
+        
+      } catch (error) {
+        console.error('Failed to activate/spawn window:', error.message);
+        
+        // Error feedback
+        const instanceEl = document.querySelector(`.instance[data-pid="${pid}"]`);
+        if (instanceEl) {
+          instanceEl.style.background = '#cc0000';
+          setTimeout(() => {
+            instanceEl.style.background = '';
+          }, 500);
+        }
+      }
+    }
+    
     // Function to calculate live session duration
     function calculateLiveDuration(startTimestamp) {
       if (!startTimestamp) return 'Unknown';
@@ -973,13 +1053,21 @@
             ` : '<div class="tile-no-git">No Git</div>'}
             ${instance.isHeadless ? '<div class="tile-headless">HEADLESS</div>' : ''}
           </div>
-          <button class="tile-voice-btn" 
-            onmousedown="event.preventDefault(); event.stopPropagation(); startVoiceDictation(${instance.pid}, '${instance.tty}'); return false;" 
-            onmouseup="event.preventDefault(); event.stopPropagation(); stopRecording(); return false;"
-            onmouseleave="stopRecording();"
-            title="Hold to record">
-            🎤
-          </button>
+          <div class="tile-buttons">
+            <button class="tile-voice-btn" 
+              onmousedown="event.preventDefault(); event.stopPropagation(); startVoiceDictation(${instance.pid}, '${instance.tty}'); return false;" 
+              onmouseup="event.preventDefault(); event.stopPropagation(); stopRecording(); return false;"
+              onmouseleave="stopRecording();"
+              onclick="event.preventDefault(); event.stopPropagation(); return false;"
+              title="Hold to record">
+              🎤
+            </button>
+            <button class="tile-activate-btn"
+              onclick="event.stopPropagation(); activateWindow(${instance.pid}, '${instance.tty}', '${instance.workingDirectory.replace(/'/g, "\\'")}'); return false;"
+              title="Activate terminal">
+              ↗️
+            </button>
+          </div>
           <div class="tile-duration">${instance.startTimestamp ? calculateLiveDuration(instance.startTimestamp) : instance.elapsedTime}</div>
         </div>
       `;
@@ -1005,8 +1093,14 @@
             onmousedown="event.preventDefault(); event.stopPropagation(); startVoiceDictation(${instance.pid}, '${instance.tty}'); return false;" 
             onmouseup="event.preventDefault(); event.stopPropagation(); stopRecording(); return false;"
             onmouseleave="stopRecording();"
+            onclick="event.preventDefault(); event.stopPropagation(); return false;"
             title="Hold to record">
             🎤
+          </button>
+          <button class="activate-btn"
+            onclick="event.stopPropagation(); activateWindow(${instance.pid}, '${instance.tty}', '${instance.workingDirectory.replace(/'/g, "\\'")}'); return false;"
+            title="Activate terminal window">
+            ↗️
           </button>
         </div>
         <div class="instance-path">
@@ -1038,34 +1132,7 @@
         </div>
       `;
       
-      // Add click handler for window activation
-      div.addEventListener('click', async () => {
-        try {
-          if (instance.isHeadless) {
-            console.log(`Spawning iTerm2 window for headless process ${instance.pid}`);
-          } else {
-            console.log(`Activating window for process ${instance.pid} (TTY: ${instance.tty})`);
-          }
-          
-          const result = await ipcRenderer.invoke('activate-window', instance.pid, instance.tty, instance.workingDirectory);
-          console.log('Window activation result:', result);
-          
-          // Visual feedback
-          div.style.background = '#0066cc';
-          setTimeout(() => {
-            div.style.background = '#2a2a2a';
-          }, 200);
-          
-        } catch (error) {
-          console.error('Failed to activate/spawn window:', error.message);
-          
-          // Error feedback
-          div.style.background = '#cc0000';
-          setTimeout(() => {
-            div.style.background = '#2a2a2a';
-          }, 500);
-        }
-      });
+      // No click handler on the div - using separate activate buttons instead
       
       return div;
     }
@@ -1109,13 +1176,21 @@
             ` : '<div class="tile-no-git">No Git</div>'}
             ${instance.isHeadless ? '<div class="tile-headless">HEADLESS</div>' : ''}
           </div>
-          <button class="tile-voice-btn" 
-            onmousedown="event.preventDefault(); event.stopPropagation(); startVoiceDictation(${instance.pid}, '${instance.tty}'); return false;" 
-            onmouseup="event.preventDefault(); event.stopPropagation(); stopRecording(); return false;"
-            onmouseleave="stopRecording();"
-            title="Hold to record">
-            🎤
-          </button>
+          <div class="tile-buttons">
+            <button class="tile-voice-btn" 
+              onmousedown="event.preventDefault(); event.stopPropagation(); startVoiceDictation(${instance.pid}, '${instance.tty}'); return false;" 
+              onmouseup="event.preventDefault(); event.stopPropagation(); stopRecording(); return false;"
+              onmouseleave="stopRecording();"
+              onclick="event.preventDefault(); event.stopPropagation(); return false;"
+              title="Hold to record">
+              🎤
+            </button>
+            <button class="tile-activate-btn"
+              onclick="event.stopPropagation(); activateWindow(${instance.pid}, '${instance.tty}', '${instance.workingDirectory.replace(/'/g, "\\'")}'); return false;"
+              title="Activate terminal">
+              ↗️
+            </button>
+          </div>
           <div class="tile-duration">${instance.startTimestamp ? calculateLiveDuration(instance.startTimestamp) : instance.elapsedTime}</div>
         </div>
       `;
