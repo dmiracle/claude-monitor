@@ -25,7 +25,7 @@
     ],
     "mac": {
       "category": "public.app-category.developer-tools",
-      "extendInfo": "build/Info.plist"
+      "extendInfo": "resources/Info.plist"
     }
   }
 }
