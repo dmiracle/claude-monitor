@@ -542,11 +542,30 @@
       gap: 2px;
     }
     
-    .tile-pid {
+    .tile-git-info {
       font-size: 8px;
-      color: #569cd6;
+      color: #4fc1ff;
       font-family: 'SF Mono', Consolas, monospace;
       font-weight: 500;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+    
+    .tile-branch {
+      font-size: 7px;
+      color: #f9e71e;
+      font-family: 'SF Mono', Consolas, monospace;
+      font-weight: 600;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+    
+    .tile-no-git {
+      font-size: 8px;
+      color: #858585;
+      font-style: italic;
     }
     
     .tile-headless {
@@ -642,7 +661,14 @@
         </div>
         <div class="tile-content">
           <div class="tile-info">
-            <div class="tile-pid">PID ${instance.pid}</div>
+            ${instance.gitInfo && instance.gitInfo.hasGit ? `
+              <div class="tile-git-info">
+                ${instance.gitInfo.repoOwner && instance.gitInfo.repoName ? 
+                  `${instance.gitInfo.repoOwner}/${instance.gitInfo.repoName}` : 'local repo'
+                }
+              </div>
+              <div class="tile-branch">${instance.gitInfo.branchName}</div>
+            ` : '<div class="tile-no-git">No Git</div>'}
             ${instance.isHeadless ? '<div class="tile-headless">HEADLESS</div>' : ''}
           </div>
           <div class="tile-duration">${instance.startTimestamp ? calculateLiveDuration(instance.startTimestamp) : instance.elapsedTime}</div>
@@ -757,7 +783,14 @@
         </div>
         <div class="tile-content">
           <div class="tile-info">
-            <div class="tile-pid">PID ${instance.pid}</div>
+            ${instance.gitInfo && instance.gitInfo.hasGit ? `
+              <div class="tile-git-info">
+                ${instance.gitInfo.repoOwner && instance.gitInfo.repoName ? 
+                  `${instance.gitInfo.repoOwner}/${instance.gitInfo.repoName}` : 'local repo'
+                }
+              </div>
+              <div class="tile-branch">${instance.gitInfo.branchName}</div>
+            ` : '<div class="tile-no-git">No Git</div>'}
             ${instance.isHeadless ? '<div class="tile-headless">HEADLESS</div>' : ''}
           </div>
           <div class="tile-duration">${instance.startTimestamp ? calculateLiveDuration(instance.startTimestamp) : instance.elapsedTime}</div>
