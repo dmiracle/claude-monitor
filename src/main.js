@@ -3,6 +3,10 @@ const path = require('path');
 const { spawn } = require('child_process');
 
 let mainWindow;
+let isMinimizedMode = false;
+
+const EXPANDED_SIZE = { width: 580, height: 380 };
+const MINIMIZED_SIZE = { width: 200, height: 150 };
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -653,4 +657,25 @@ ipcMain.handle('activate-window', async (event, pid, tty, workingDirectory) => {
       reject(new Error(`Failed to detect terminal: ${error.message}`));
     });
   });
+});
+
+// IPC handler to toggle window size
+ipcMain.handle('toggle-window-size', async (event, minimize) => {
+  if (!mainWindow) return { success: false, error: 'No window available' };
+  
+  try {
+    isMinimizedMode = minimize;
+    
+    if (minimize) {
+      mainWindow.setSize(MINIMIZED_SIZE.width, MINIMIZED_SIZE.height);
+      mainWindow.setResizable(false);
+    } else {
+      mainWindow.setSize(EXPANDED_SIZE.width, EXPANDED_SIZE.height);
+      mainWindow.setResizable(true);
+    }
+    
+    return { success: true, minimized: minimize };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
 });

@@ -382,10 +382,20 @@
       padding: 20px;
     }
     
-    /* Minimized view styles */
+    /* Minimized view styles - ultra compact */
+    .instances-container.minimized {
+      padding: 0;
+    }
+    
+    .instances-container.minimized .header {
+      display: none !important;
+    }
+    
     .instances-container.minimized .instance {
-      padding: 6px 12px;
-      margin-bottom: 4px;
+      padding: 3px 6px;
+      margin-bottom: 2px;
+      border-radius: 3px;
+      border-left-width: 2px;
     }
     
     .instances-container.minimized .instance-path,
@@ -394,43 +404,62 @@
     .instances-container.minimized .activity-meter,
     .instances-container.minimized .git-repo-info,
     .instances-container.minimized .git-branch-info,
-    .instances-container.minimized .model-info {
+    .instances-container.minimized .model-info,
+    .instances-container.minimized .process-info .tty,
+    .instances-container.minimized .status {
       display: none !important;
     }
     
     .instances-container.minimized .instance-header {
-      grid-template-columns: auto 1fr auto auto;
-      gap: 6px;
+      grid-template-columns: auto 1fr auto;
+      gap: 4px;
       margin-bottom: 0;
     }
     
     .instances-container.minimized .working-dir-name {
-      font-size: 12px;
-      font-weight: 500;
+      font-size: 9px;
+      font-weight: 600;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+    
+    .instances-container.minimized .working-dir-name::before {
+      display: none;
     }
     
     .instances-container.minimized .session-duration {
-      font-size: 9px;
-      padding: 1px 4px;
-    }
-    
-    .instances-container.minimized .status {
       font-size: 8px;
-      padding: 2px 6px;
+      padding: 1px 3px;
+      border-radius: 6px;
     }
     
     .instances-container.minimized .activity {
-      width: 16px;
-      height: 16px;
-      font-size: 14px;
-    }
-    
-    .instances-container.minimized .pid {
+      width: 12px;
+      height: 12px;
       font-size: 10px;
     }
     
-    .instances-container.minimized .tty {
+    .instances-container.minimized .pid {
       font-size: 8px;
+      font-weight: 500;
+    }
+    
+    .instances-container.minimized .process-info {
+      gap: 3px;
+    }
+    
+    /* Hide header when minimized */
+    body.minimized .header {
+      display: none !important;
+    }
+    
+    body.minimized {
+      padding: 4px;
+    }
+    
+    body.minimized #instances-container {
+      margin-top: 0;
     }
   </style>
 </head>
@@ -762,36 +791,54 @@
       loadInstances();
     }
     
-    function toggleView() {
+    async function toggleView() {
       const container = document.getElementById('instances-container');
       const toggleBtn = document.getElementById('view-toggle');
       
       isMinimized = !isMinimized;
       
-      if (isMinimized) {
-        container.classList.add('minimized');
-        toggleBtn.textContent = 'Expand';
-      } else {
-        container.classList.remove('minimized');
-        toggleBtn.textContent = 'Minimize';
+      try {
+        // Resize the window first
+        const result = await ipcRenderer.invoke('toggle-window-size', isMinimized);
+        
+        if (result.success) {
+          if (isMinimized) {
+            container.classList.add('minimized');
+            document.body.classList.add('minimized');
+            toggleBtn.textContent = 'Expand';
+          } else {
+            container.classList.remove('minimized');
+            document.body.classList.remove('minimized');
+            toggleBtn.textContent = 'Minimize';
+          }
+          
+          // Store preference in localStorage
+          localStorage.setItem('claude-monitor-minimized', isMinimized.toString());
+        } else {
+          console.error('Failed to resize window:', result.error);
+          // Revert the state if window resize failed
+          isMinimized = !isMinimized;
+        }
+      } catch (error) {
+        console.error('Error toggling view:', error);
+        // Revert the state if there was an error
+        isMinimized = !isMinimized;
       }
-      
-      // Store preference in localStorage
-      localStorage.setItem('claude-monitor-minimized', isMinimized.toString());
     }
     
     // Load saved view preference
-    function loadViewPreference() {
+    async function loadViewPreference() {
       const saved = localStorage.getItem('claude-monitor-minimized');
       if (saved === 'true') {
         isMinimized = false; // Set to false first so toggle will work correctly
-        toggleView();
+        await toggleView();
       }
     }
     
     // Load instances on startup
-    loadViewPreference();
-    loadInstances();
+    loadViewPreference().then(() => {
+      loadInstances();
+    });
     
     // Auto-refresh every 5 seconds
     setInterval(loadInstances, 5000);
