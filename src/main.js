@@ -25,6 +25,16 @@ function createWindow() {
   if (process.argv.includes('--dev')) {
     mainWindow.webContents.openDevTools();
   }
+  
+  // Handle permission requests (for microphone access)
+  mainWindow.webContents.session.setPermissionRequestHandler((webContents, permission, callback) => {
+    if (permission === 'media') {
+      // Always grant microphone permission for voice dictation
+      callback(true);
+    } else {
+      callback(false);
+    }
+  });
 }
 
 app.whenReady().then(createWindow);
@@ -699,4 +709,119 @@ ipcMain.handle('update-window-height', async (event, instanceCount) => {
   } catch (error) {
     return { success: false, error: error.message };
   }
+});
+
+// IPC handler to send text to a specific instance
+ipcMain.handle('send-text-to-instance', async (event, pid, tty, text) => {
+  return new Promise((resolve) => {
+    // Escape single quotes in the text for AppleScript
+    const escapedText = text.replace(/'/g, "\\'");
+    
+    // Determine which terminal to use based on TTY
+    let sendTextScript;
+    
+    if (!tty || tty === '??') {
+      // For headless instances, we can't send text directly
+      resolve({ success: false, error: 'Cannot send text to headless instance' });
+      return;
+    }
+    
+    // Create AppleScript to send text to the specific terminal window
+    sendTextScript = `
+      tell application "System Events"
+        set foundProcess to false
+        
+        -- Try iTerm2 first
+        if application "iTerm2" is running then
+          tell application "iTerm2"
+            activate
+            set targetTTY to "/dev/${tty}"
+            
+            repeat with theWindow in windows
+              repeat with theTab in tabs of theWindow
+                repeat with theSession in sessions of theTab
+                  try
+                    if tty of theSession is targetTTY then
+                      select theWindow
+                      select theTab
+                      select theSession
+                      
+                      -- Send the text
+                      tell theSession
+                        write text "${escapedText}"
+                      end tell
+                      
+                      set foundProcess to true
+                      exit repeat
+                    end if
+                  end try
+                end repeat
+                if foundProcess then exit repeat
+              end repeat
+              if foundProcess then exit repeat
+            end repeat
+          end tell
+        end if
+        
+        -- If not found in iTerm2, try Terminal
+        if not foundProcess and application "Terminal" is running then
+          tell application "Terminal"
+            activate
+            repeat with theWindow in windows
+              repeat with theTab in tabs of theWindow
+                try
+                  -- Terminal doesn't have direct TTY access, so we try to match by window
+                  if (processes of theTab) contains "${tty}" then
+                    set selected of theTab to true
+                    set frontmost of theWindow to true
+                    
+                    -- Send the text
+                    do script "${escapedText}" in theTab
+                    
+                    set foundProcess to true
+                    exit repeat
+                  end if
+                end try
+              end repeat
+              if foundProcess then exit repeat
+            end repeat
+          end tell
+        end if
+        
+        return foundProcess
+      end tell
+    `;
+    
+    const osascript = spawn('osascript', ['-e', sendTextScript]);
+    let scriptOutput = '';
+    let scriptError = '';
+    
+    osascript.stdout.on('data', (data) => {
+      scriptOutput += data.toString();
+    });
+    
+    osascript.stderr.on('data', (data) => {
+      scriptError += data.toString();
+    });
+    
+    osascript.on('close', (code) => {
+      if (code === 0 && scriptOutput.includes('true')) {
+        resolve({ success: true, message: 'Text sent successfully' });
+      } else {
+        console.log('AppleScript error:', scriptError);
+        resolve({ 
+          success: false, 
+          error: 'Failed to send text to terminal',
+          details: scriptError
+        });
+      }
+    });
+    
+    osascript.on('error', (error) => {
+      resolve({ 
+        success: false, 
+        error: `AppleScript error: ${error.message}`
+      });
+    });
+  });
 });
