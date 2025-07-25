@@ -391,6 +391,33 @@
       display: none !important;
     }
     
+    /* Expand button for minimized view */
+    .expand-button {
+      display: none;
+      position: fixed;
+      top: 4px;
+      right: 4px;
+      background: #4CAF50;
+      color: white;
+      width: 20px;
+      height: 20px;
+      border: 1px solid #45a049;
+      border-radius: 50%;
+      font-size: 10px;
+      cursor: pointer;
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .expand-button:hover {
+      background: #45a049;
+    }
+    
+    body.minimized .expand-button {
+      display: flex;
+    }
+    
     body.minimized #instances-container {
       margin-top: 0;
       display: flex;
@@ -556,6 +583,8 @@
   <div id="instances-container">
     <div class="loading">Loading instances...</div>
   </div>
+  
+  <button class="expand-button" onclick="toggleView()" title="Expand to full view">⬆</button>
 
   <script>
     const { ipcRenderer } = require('electron');
@@ -699,7 +728,54 @@
       return div;
     }
     
+    function updateTileElement(element, instance) {
+      // Extract directory name from full path
+      const dirName = instance.workingDirectory.split('/').pop() || instance.workingDirectory;
+      
+      // Update class names based on current state
+      let className = 'instance';
+      if (instance.isHeadless) className += ' headless';
+      if (instance.activityState === 'working') className += ' working';
+      if (instance.activityState === 'thinking') className += ' thinking';
+      
+      if (element.className !== className) {
+        element.className = className;
+      }
+      
+      // Create updated tile content
+      const tileContent = `
+        <div class="tile-header">
+          <div class="tile-title">${dirName}</div>
+          <div class="tile-indicators">
+            <div class="tile-git-icon ${instance.gitInfo && instance.gitInfo.hasGit ? 'has-git' : ''}">
+              ${instance.gitInfo && instance.gitInfo.hasGit ? '📂' : '📄'}
+            </div>
+            <div class="tile-activity ${instance.activityState}">
+              ${instance.activityIndicator}
+            </div>
+          </div>
+        </div>
+        <div class="tile-content">
+          <div class="tile-info">
+            <div class="tile-pid">PID ${instance.pid}</div>
+            ${instance.isHeadless ? '<div class="tile-headless">HEADLESS</div>' : ''}
+          </div>
+          <div class="tile-duration">${instance.startTimestamp ? calculateLiveDuration(instance.startTimestamp) : instance.elapsedTime}</div>
+        </div>
+      `;
+      
+      // Update the element content and store the new tile content
+      element.innerHTML = tileContent;
+      element.dataset.tileContent = tileContent;
+    }
+    
     function updateInstanceElement(element, instance) {
+      // Check if we're in minimized mode and update tile content
+      if (document.body.classList.contains('minimized')) {
+        updateTileElement(element, instance);
+        return;
+      }
+      
       // Update session duration with live calculation
       const sessionDurationEl = element.querySelector('.session-duration');
       if (sessionDurationEl) {
@@ -978,18 +1054,39 @@
     
     // Update live durations every second
     setInterval(() => {
-      document.querySelectorAll('.session-duration').forEach(el => {
-        const instanceElement = el.closest('.instance');
-        const pid = parseInt(instanceElement.dataset.pid);
-        const instance = currentInstances.get(pid);
-        
-        if (instance && instance.startTimestamp) {
-          const liveDuration = calculateLiveDuration(instance.startTimestamp);
-          if (el.textContent !== liveDuration) {
-            el.textContent = liveDuration;
+      if (document.body.classList.contains('minimized')) {
+        // Update tile durations
+        document.querySelectorAll('.tile-duration').forEach(el => {
+          const instanceElement = el.closest('.instance');
+          if (instanceElement) {
+            const pid = parseInt(instanceElement.dataset.pid);
+            const instance = currentInstances.get(pid);
+            
+            if (instance && instance.startTimestamp) {
+              const liveDuration = calculateLiveDuration(instance.startTimestamp);
+              if (el.textContent !== liveDuration) {
+                el.textContent = liveDuration;
+              }
+            }
           }
-        }
-      });
+        });
+      } else {
+        // Update expanded view durations
+        document.querySelectorAll('.session-duration').forEach(el => {
+          const instanceElement = el.closest('.instance');
+          if (instanceElement) {
+            const pid = parseInt(instanceElement.dataset.pid);
+            const instance = currentInstances.get(pid);
+            
+            if (instance && instance.startTimestamp) {
+              const liveDuration = calculateLiveDuration(instance.startTimestamp);
+              if (el.textContent !== liveDuration) {
+                el.textContent = liveDuration;
+              }
+            }
+          }
+        });
+      }
     }, 1000);
   </script>
 </body>
