@@ -722,6 +722,14 @@
     let isRecognitionActive = false;
     
     // Initialize Web Speech API
+    // TROUBLESHOOTING: Voice recognition not working properly
+    // - Getting AVCapture deprecation warnings
+    // - Recognition may be failing due to Electron's file:// context
+    // - Possible solutions:
+    //   1. Use Electron's native APIs instead of Web Speech API
+    //   2. Serve app over HTTPS instead of file://
+    //   3. Check macOS permissions for microphone access
+    //   4. May need to use a different speech recognition library
     function initSpeechRecognition() {
       console.log('Initializing speech recognition...');
       console.log('webkitSpeechRecognition available?', 'webkitSpeechRecognition' in window);
