@@ -734,7 +734,7 @@ ipcMain.handle('send-text-to-instance', async (event, pid, tty, text) => {
         -- Try iTerm2 first
         if application "iTerm2" is running then
           tell application "iTerm2"
-            activate
+            -- Don't activate iTerm2, stay in background
             set targetTTY to "/dev/${tty}"
             
             repeat with theWindow in windows
@@ -742,11 +742,7 @@ ipcMain.handle('send-text-to-instance', async (event, pid, tty, text) => {
                 repeat with theSession in sessions of theTab
                   try
                     if tty of theSession is targetTTY then
-                      select theWindow
-                      select theTab
-                      select theSession
-                      
-                      -- Send the text
+                      -- Send text without focusing
                       tell theSession
                         write text "${escapedText}"
                       end tell
@@ -766,16 +762,13 @@ ipcMain.handle('send-text-to-instance', async (event, pid, tty, text) => {
         -- If not found in iTerm2, try Terminal
         if not foundProcess and application "Terminal" is running then
           tell application "Terminal"
-            activate
+            -- Don't activate Terminal, stay in background
             repeat with theWindow in windows
               repeat with theTab in tabs of theWindow
                 try
                   -- Terminal doesn't have direct TTY access, so we try to match by window
                   if (processes of theTab) contains "${tty}" then
-                    set selected of theTab to true
-                    set frontmost of theWindow to true
-                    
-                    -- Send the text
+                    -- Send text without focusing
                     do script "${escapedText}" in theTab
                     
                     set foundProcess to true

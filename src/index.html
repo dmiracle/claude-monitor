@@ -816,25 +816,75 @@
     // Send dictated text to the instance
     async function sendDictatedText(pid, tty, text) {
       try {
+        // Show sending status
+        showTextStatus(pid, `Sending: "${text}"`, 'sending');
+        
         const result = await ipcRenderer.invoke('send-text-to-instance', pid, tty, text);
         if (result.success) {
           console.log('Text sent successfully:', text);
-          // Visual feedback - flash the instance
+          // Visual feedback - flash the instance green
+          showTextStatus(pid, `Sent: "${text}"`, 'success');
           const instanceEl = document.querySelector(`.instance[data-pid="${pid}"]`);
           if (instanceEl) {
             instanceEl.style.borderColor = '#4CAF50';
             setTimeout(() => {
               instanceEl.style.borderColor = '';
-            }, 500);
+            }, 1000);
           }
         } else {
           console.error('Failed to send text:', result.error);
-          alert('Failed to send dictated text to the instance.');
+          showTextStatus(pid, 'Failed to send text', 'error');
+          // Only show alert for non-headless errors
+          if (!result.error.includes('headless')) {
+            alert('Failed to send dictated text to the instance.');
+          }
         }
       } catch (error) {
         console.error('Error sending text:', error);
+        showTextStatus(pid, 'Error sending text', 'error');
         alert('Error sending dictated text.');
       }
+    }
+    
+    // Show text status near the instance
+    function showTextStatus(pid, message, type) {
+      const instanceEl = document.querySelector(`.instance[data-pid="${pid}"]`);
+      if (!instanceEl) return;
+      
+      // Remove any existing status
+      const existingStatus = instanceEl.querySelector('.voice-status');
+      if (existingStatus) {
+        existingStatus.remove();
+      }
+      
+      // Create status element
+      const statusEl = document.createElement('div');
+      statusEl.className = `voice-status voice-status-${type}`;
+      statusEl.textContent = message;
+      statusEl.style.cssText = `
+        position: absolute;
+        top: -25px;
+        left: 10px;
+        right: 10px;
+        background: ${type === 'success' ? '#4CAF50' : type === 'error' ? '#f44336' : '#673ab7'};
+        color: white;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        z-index: 1000;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      `;
+      
+      // Position relative to the instance
+      instanceEl.style.position = 'relative';
+      instanceEl.appendChild(statusEl);
+      
+      // Auto-remove after delay
+      setTimeout(() => {
+        statusEl.remove();
+      }, type === 'error' ? 3000 : 2000);
     }
     
     // Function to calculate live session duration
@@ -898,7 +948,7 @@
             ` : '<div class="tile-no-git">No Git</div>'}
             ${instance.isHeadless ? '<div class="tile-headless">HEADLESS</div>' : ''}
           </div>
-          <button class="tile-voice-btn" onclick="startVoiceDictation(${instance.pid}, '${instance.tty}')" title="Voice dictation">
+          <button class="tile-voice-btn" onclick="event.preventDefault(); event.stopPropagation(); startVoiceDictation(${instance.pid}, '${instance.tty}'); return false;" title="Voice dictation">
             🎤
           </button>
           <div class="tile-duration">${instance.startTimestamp ? calculateLiveDuration(instance.startTimestamp) : instance.elapsedTime}</div>
@@ -922,7 +972,7 @@
             ${instance.isHeadless ? 'HEADLESS' : 'INTERACTIVE'}
           </div>
           <div class="session-duration">${instance.startTimestamp ? calculateLiveDuration(instance.startTimestamp) : instance.elapsedTime}</div>
-          <button class="voice-btn" onclick="startVoiceDictation(${instance.pid}, '${instance.tty}')" title="Voice dictation">
+          <button class="voice-btn" onclick="event.preventDefault(); event.stopPropagation(); startVoiceDictation(${instance.pid}, '${instance.tty}'); return false;" title="Voice dictation">
             🎤
           </button>
         </div>
@@ -1026,7 +1076,7 @@
             ` : '<div class="tile-no-git">No Git</div>'}
             ${instance.isHeadless ? '<div class="tile-headless">HEADLESS</div>' : ''}
           </div>
-          <button class="tile-voice-btn" onclick="startVoiceDictation(${instance.pid}, '${instance.tty}')" title="Voice dictation">
+          <button class="tile-voice-btn" onclick="event.preventDefault(); event.stopPropagation(); startVoiceDictation(${instance.pid}, '${instance.tty}'); return false;" title="Voice dictation">
             🎤
           </button>
           <div class="tile-duration">${instance.startTimestamp ? calculateLiveDuration(instance.startTimestamp) : instance.elapsedTime}</div>
