@@ -745,6 +745,7 @@
     let isMinimized = false;
     let currentRecording = null;
     let recognition = null;
+    let isRecognitionActive = false;
     
     // Initialize Web Speech API
     function initSpeechRecognition() {
@@ -755,8 +756,18 @@
         recognition.lang = 'en-US';
         recognition.maxAlternatives = 1;
         
+        // Additional settings to prevent auto-stop
+        recognition.grammars = undefined;
+        recognition.serviceURI = undefined;
+        
         recognition.onstart = () => {
           console.log('Voice recognition started');
+          console.log('Recognition settings:', {
+            continuous: recognition.continuous,
+            interimResults: recognition.interimResults,
+            lang: recognition.lang
+          });
+          isRecognitionActive = true;
           updateRecordingUI(true);
         };
         
@@ -787,13 +798,44 @@
           console.error('Speech recognition error:', event.error);
           if (event.error === 'not-allowed') {
             alert('Microphone permission denied. Please allow microphone access and try again.');
+            stopRecording();
+          } else if (event.error === 'no-speech') {
+            // No speech detected, but keep recording if still active
+            console.log('No speech detected, continuing...');
+            if (currentRecording) {
+              // Recognition will auto-restart via onend handler
+              return;
+            }
+          } else if (event.error === 'aborted') {
+            // Aborted by user or system, don't restart
+            console.log('Recognition aborted');
+            updateRecordingUI(false);
+          } else {
+            // Other errors, stop recording
+            console.error('Unhandled recognition error:', event.error);
+            stopRecording();
           }
-          stopRecording();
         };
         
         recognition.onend = () => {
           console.log('Voice recognition ended');
-          stopRecording();
+          isRecognitionActive = false;
+          // If we still have an active recording, restart recognition
+          if (currentRecording && !isRecognitionActive) {
+            console.log('Restarting recognition for continuous recording');
+            setTimeout(() => {
+              if (currentRecording) {
+                try {
+                  recognition.start();
+                } catch (error) {
+                  console.error('Failed to restart recognition:', error);
+                  stopRecording();
+                }
+              }
+            }, 100); // Small delay to prevent rapid restarts
+          } else {
+            updateRecordingUI(false);
+          }
         };
       } else {
         console.error('Web Speech API not supported');
@@ -844,14 +886,15 @@
     
     // Stop recording
     function stopRecording() {
-      if (recognition && currentRecording) {
+      currentRecording = null; // Clear this first to prevent restart
+      if (recognition && isRecognitionActive) {
         try {
           recognition.stop();
         } catch (error) {
           console.error('Error stopping recognition:', error);
         }
       }
-      currentRecording = null;
+      isRecognitionActive = false;
       updateRecordingUI(false);
     }
     
