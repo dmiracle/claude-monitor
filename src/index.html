@@ -90,7 +90,7 @@
     
     .instance-header {
       display: grid;
-      grid-template-columns: auto 1fr auto auto;
+      grid-template-columns: auto 1fr auto auto auto;
       align-items: center;
       gap: 8px;
       margin-bottom: 3px;
@@ -370,6 +370,56 @@
       border-color: #f14c4c;
     }
     
+    /* Voice dictation button styles */
+    .voice-btn {
+      background: #673ab7;
+      color: white;
+      border: none;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      position: relative;
+    }
+    
+    .voice-btn:hover {
+      background: #5e35b1;
+      transform: scale(1.1);
+    }
+    
+    .voice-btn.recording {
+      background: #f44336;
+      animation: pulse 1.5s infinite;
+    }
+    
+    .voice-btn.recording::after {
+      content: '';
+      position: absolute;
+      top: -4px;
+      right: -4px;
+      width: 8px;
+      height: 8px;
+      background: #ff5252;
+      border-radius: 50%;
+      animation: blink 1s infinite;
+    }
+    
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(244, 67, 54, 0.7); }
+      70% { box-shadow: 0 0 0 10px rgba(244, 67, 54, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(244, 67, 54, 0); }
+    }
+    
+    @keyframes blink {
+      0%, 50% { opacity: 1; }
+      51%, 100% { opacity: 0; }
+    }
+    
     .no-instances {
       text-align: center;
       color: #888;
@@ -536,6 +586,13 @@
       display: flex;
       justify-content: space-between;
       align-items: flex-end;
+      gap: 4px;
+    }
+    
+    .tile-buttons {
+      display: flex;
+      gap: 4px;
+      align-items: center;
     }
     
     .tile-info {
@@ -597,6 +654,72 @@
       flex-shrink: 0;
       white-space: nowrap;
     }
+    
+    /* Voice button in tiles */
+    .tile-voice-btn {
+      background: #673ab7;
+      color: white;
+      border: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+    }
+    
+    .tile-voice-btn:hover {
+      background: #5e35b1;
+      transform: scale(1.1);
+    }
+    
+    .tile-voice-btn.recording {
+      background: #f44336;
+      animation: pulse 1.5s infinite;
+    }
+    
+    .activate-btn {
+      background: #2196F3;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      margin-left: 8px;
+      transition: all 0.2s ease;
+    }
+    
+    .activate-btn:hover {
+      background: #1976D2;
+      transform: translateY(-1px);
+    }
+    
+    .tile-activate-btn {
+      background: #2196F3;
+      color: white;
+      border: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+      margin-left: 4px;
+    }
+    
+    .tile-activate-btn:hover {
+      background: #1976D2;
+      transform: scale(1.1);
+    }
   </style>
 </head>
 <body>
@@ -620,6 +743,254 @@
     const { ipcRenderer } = require('electron');
     let currentInstances = new Map();
     let isMinimized = false;
+    let currentRecording = null;
+    let recognition = null;
+    let accumulatedTranscript = '';
+    
+    // Initialize Web Speech API
+    function initSpeechRecognition() {
+      if ('webkitSpeechRecognition' in window) {
+        recognition = new webkitSpeechRecognition();
+        recognition.continuous = true;  // Keep recording while button is held
+        recognition.interimResults = true;
+        recognition.lang = 'en-US';
+        recognition.maxAlternatives = 1;
+        
+        recognition.onstart = () => {
+          console.log('Voice recognition started');
+          updateRecordingUI(true);
+        };
+        
+        recognition.onresult = (event) => {
+          let finalTranscript = '';
+          let interimTranscript = '';
+          
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            const transcript = event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+              finalTranscript += transcript;
+            } else {
+              interimTranscript += transcript;
+            }
+          }
+          
+          // Accumulate final transcripts
+          if (finalTranscript) {
+            accumulatedTranscript += (accumulatedTranscript ? ' ' : '') + finalTranscript;
+          }
+          
+          // Show real-time transcription (optional - could add UI for this)
+          console.log('Interim:', interimTranscript);
+          console.log('Final:', finalTranscript);
+          console.log('Accumulated:', accumulatedTranscript);
+        };
+        
+        recognition.onerror = (event) => {
+          console.error('Speech recognition error:', event.error);
+          if (event.error === 'not-allowed') {
+            alert('Microphone permission denied. Please allow microphone access and try again.');
+          }
+          stopRecording();
+        };
+        
+        recognition.onend = () => {
+          console.log('Voice recognition ended');
+          stopRecording();
+        };
+      } else {
+        console.error('Web Speech API not supported');
+        alert('Voice dictation is not supported in this browser.');
+      }
+    }
+    
+    // Start voice dictation for a specific instance
+    function startVoiceDictation(pid, tty) {
+      if (!recognition) {
+        initSpeechRecognition();
+      }
+      
+      if (!recognition) {
+        alert('Voice dictation is not available.');
+        return;
+      }
+      
+      // Don't start if already recording
+      if (currentRecording) {
+        return;
+      }
+      
+      currentRecording = { pid, tty };
+      accumulatedTranscript = ''; // Reset accumulated transcript
+      
+      try {
+        recognition.start();
+        console.log('Started recording for PID:', pid);
+      } catch (error) {
+        console.error('Failed to start recognition:', error);
+        // Silently fail if already started
+        if (error.message && error.message.includes('already started')) {
+          // Recognition is already running, which is fine
+          updateRecordingUI(true); // Make sure UI is updated even if already started
+          return;
+        }
+        alert('Failed to start voice dictation. Please try again.');
+        currentRecording = null;
+      }
+    }
+    
+    // Stop recording
+    function stopRecording() {
+      if (recognition && currentRecording) {
+        try {
+          recognition.stop();
+          
+          // Send accumulated transcript if we have any
+          if (accumulatedTranscript && accumulatedTranscript.trim()) {
+            const { pid, tty } = currentRecording;
+            sendDictatedText(pid, tty, accumulatedTranscript.trim());
+          }
+        } catch (error) {
+          console.error('Error stopping recognition:', error);
+        }
+      }
+      currentRecording = null;
+      accumulatedTranscript = ''; // Clear accumulated transcript
+      updateRecordingUI(false);
+    }
+    
+    // Update UI to show recording state
+    function updateRecordingUI(isRecording) {
+      // Update all voice buttons
+      document.querySelectorAll('.voice-btn, .tile-voice-btn').forEach(btn => {
+        if (isRecording && currentRecording) {
+          // Only update the button for the active recording
+          // Extract PID from the onmousedown attribute
+          const onmousedown = btn.getAttribute('onmousedown');
+          if (onmousedown) {
+            const pidMatch = onmousedown.match(/startVoiceDictation\((\d+)/);
+            if (pidMatch) {
+              const btnPid = parseInt(pidMatch[1]);
+              if (btnPid === currentRecording.pid) {
+                btn.classList.add('recording');
+                btn.innerHTML = '🔴';
+              }
+            }
+          }
+        } else {
+          btn.classList.remove('recording');
+          btn.innerHTML = '🎤';
+        }
+      });
+    }
+    
+    // Send dictated text to the instance
+    async function sendDictatedText(pid, tty, text) {
+      try {
+        // Show sending status
+        showTextStatus(pid, `Sending: "${text}"`, 'sending');
+        
+        const result = await ipcRenderer.invoke('send-text-to-instance', pid, tty, text);
+        if (result.success) {
+          console.log('Text sent successfully:', text);
+          // Visual feedback - flash the instance green
+          showTextStatus(pid, `Sent: "${text}"`, 'success');
+          const instanceEl = document.querySelector(`.instance[data-pid="${pid}"]`);
+          if (instanceEl) {
+            instanceEl.style.borderColor = '#4CAF50';
+            setTimeout(() => {
+              instanceEl.style.borderColor = '';
+            }, 1000);
+          }
+        } else {
+          console.error('Failed to send text:', result.error);
+          showTextStatus(pid, 'Failed to send text', 'error');
+          // Only show alert for non-headless errors
+          if (!result.error.includes('headless')) {
+            alert('Failed to send dictated text to the instance.');
+          }
+        }
+      } catch (error) {
+        console.error('Error sending text:', error);
+        showTextStatus(pid, 'Error sending text', 'error');
+        alert('Error sending dictated text.');
+      }
+    }
+    
+    // Show text status near the instance
+    function showTextStatus(pid, message, type) {
+      const instanceEl = document.querySelector(`.instance[data-pid="${pid}"]`);
+      if (!instanceEl) return;
+      
+      // Remove any existing status
+      const existingStatus = instanceEl.querySelector('.voice-status');
+      if (existingStatus) {
+        existingStatus.remove();
+      }
+      
+      // Create status element
+      const statusEl = document.createElement('div');
+      statusEl.className = `voice-status voice-status-${type}`;
+      statusEl.textContent = message;
+      statusEl.style.cssText = `
+        position: absolute;
+        top: -25px;
+        left: 10px;
+        right: 10px;
+        background: ${type === 'success' ? '#4CAF50' : type === 'error' ? '#f44336' : '#673ab7'};
+        color: white;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        z-index: 1000;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      `;
+      
+      // Position relative to the instance
+      instanceEl.style.position = 'relative';
+      instanceEl.appendChild(statusEl);
+      
+      // Auto-remove after delay
+      setTimeout(() => {
+        statusEl.remove();
+      }, type === 'error' ? 3000 : 2000);
+    }
+    
+    // Activate window for a process
+    async function activateWindow(pid, tty, workingDirectory) {
+      try {
+        if (!tty || tty === '??') {
+          console.log(`Spawning iTerm2 window for headless process ${pid}`);
+        } else {
+          console.log(`Activating window for process ${pid} (TTY: ${tty})`);
+        }
+        
+        const result = await ipcRenderer.invoke('activate-window', pid, tty, workingDirectory);
+        console.log('Window activation result:', result);
+        
+        // Visual feedback
+        const instanceEl = document.querySelector(`.instance[data-pid="${pid}"]`);
+        if (instanceEl) {
+          instanceEl.style.background = '#0066cc';
+          setTimeout(() => {
+            instanceEl.style.background = '';
+          }, 200);
+        }
+        
+      } catch (error) {
+        console.error('Failed to activate/spawn window:', error.message);
+        
+        // Error feedback
+        const instanceEl = document.querySelector(`.instance[data-pid="${pid}"]`);
+        if (instanceEl) {
+          instanceEl.style.background = '#cc0000';
+          setTimeout(() => {
+            instanceEl.style.background = '';
+          }, 500);
+        }
+      }
+    }
     
     // Function to calculate live session duration
     function calculateLiveDuration(startTimestamp) {
@@ -682,6 +1053,21 @@
             ` : '<div class="tile-no-git">No Git</div>'}
             ${instance.isHeadless ? '<div class="tile-headless">HEADLESS</div>' : ''}
           </div>
+          <div class="tile-buttons">
+            <button class="tile-voice-btn" 
+              onmousedown="event.preventDefault(); event.stopPropagation(); startVoiceDictation(${instance.pid}, '${instance.tty}'); return false;" 
+              onmouseup="event.preventDefault(); event.stopPropagation(); stopRecording(); return false;"
+              onmouseleave="stopRecording();"
+              onclick="event.preventDefault(); event.stopPropagation(); return false;"
+              title="Hold to record">
+              🎤
+            </button>
+            <button class="tile-activate-btn"
+              onclick="event.stopPropagation(); activateWindow(${instance.pid}, '${instance.tty}', '${instance.workingDirectory.replace(/'/g, "\\'")}'); return false;"
+              title="Activate terminal">
+              ↗️
+            </button>
+          </div>
           <div class="tile-duration">${instance.startTimestamp ? calculateLiveDuration(instance.startTimestamp) : instance.elapsedTime}</div>
         </div>
       `;
@@ -703,6 +1089,19 @@
             ${instance.isHeadless ? 'HEADLESS' : 'INTERACTIVE'}
           </div>
           <div class="session-duration">${instance.startTimestamp ? calculateLiveDuration(instance.startTimestamp) : instance.elapsedTime}</div>
+          <button class="voice-btn" 
+            onmousedown="event.preventDefault(); event.stopPropagation(); startVoiceDictation(${instance.pid}, '${instance.tty}'); return false;" 
+            onmouseup="event.preventDefault(); event.stopPropagation(); stopRecording(); return false;"
+            onmouseleave="stopRecording();"
+            onclick="event.preventDefault(); event.stopPropagation(); return false;"
+            title="Hold to record">
+            🎤
+          </button>
+          <button class="activate-btn"
+            onclick="event.stopPropagation(); activateWindow(${instance.pid}, '${instance.tty}', '${instance.workingDirectory.replace(/'/g, "\\'")}'); return false;"
+            title="Activate terminal window">
+            ↗️
+          </button>
         </div>
         <div class="instance-path">
           <div class="full-path">${instance.workingDirectory}</div>
@@ -733,34 +1132,7 @@
         </div>
       `;
       
-      // Add click handler for window activation
-      div.addEventListener('click', async () => {
-        try {
-          if (instance.isHeadless) {
-            console.log(`Spawning iTerm2 window for headless process ${instance.pid}`);
-          } else {
-            console.log(`Activating window for process ${instance.pid} (TTY: ${instance.tty})`);
-          }
-          
-          const result = await ipcRenderer.invoke('activate-window', instance.pid, instance.tty, instance.workingDirectory);
-          console.log('Window activation result:', result);
-          
-          // Visual feedback
-          div.style.background = '#0066cc';
-          setTimeout(() => {
-            div.style.background = '#2a2a2a';
-          }, 200);
-          
-        } catch (error) {
-          console.error('Failed to activate/spawn window:', error.message);
-          
-          // Error feedback
-          div.style.background = '#cc0000';
-          setTimeout(() => {
-            div.style.background = '#2a2a2a';
-          }, 500);
-        }
-      });
+      // No click handler on the div - using separate activate buttons instead
       
       return div;
     }
@@ -803,6 +1175,21 @@
               <div class="tile-branch">${instance.gitInfo.branchName}</div>
             ` : '<div class="tile-no-git">No Git</div>'}
             ${instance.isHeadless ? '<div class="tile-headless">HEADLESS</div>' : ''}
+          </div>
+          <div class="tile-buttons">
+            <button class="tile-voice-btn" 
+              onmousedown="event.preventDefault(); event.stopPropagation(); startVoiceDictation(${instance.pid}, '${instance.tty}'); return false;" 
+              onmouseup="event.preventDefault(); event.stopPropagation(); stopRecording(); return false;"
+              onmouseleave="stopRecording();"
+              onclick="event.preventDefault(); event.stopPropagation(); return false;"
+              title="Hold to record">
+              🎤
+            </button>
+            <button class="tile-activate-btn"
+              onclick="event.stopPropagation(); activateWindow(${instance.pid}, '${instance.tty}', '${instance.workingDirectory.replace(/'/g, "\\'")}'); return false;"
+              title="Activate terminal">
+              ↗️
+            </button>
           </div>
           <div class="tile-duration">${instance.startTimestamp ? calculateLiveDuration(instance.startTimestamp) : instance.elapsedTime}</div>
         </div>
