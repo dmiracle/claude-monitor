@@ -1393,8 +1393,23 @@
       
       // Get additional details (MCP tools, etc.)
       try {
+        console.log('Getting details for instance:', pid, instance.workingDirectory);
         const detailInfo = await ipcRenderer.invoke('get-instance-details', pid, instance.workingDirectory);
+        console.log('Received detail info:', detailInfo);
+        
+        // Debug: Add a visual indicator
+        const mcpSection = document.getElementById('mcpToolsSection');
+        if (mcpSection) {
+          mcpSection.style.border = '2px solid red';
+          console.log('MCP section found and highlighted');
+        }
+        
         if (detailInfo) {
+          // Debug: Update modal title with MCP tools count
+          const modalTitle = document.getElementById('modalTitle');
+          if (modalTitle && detailInfo.mcpTools) {
+            modalTitle.textContent += ` (${detailInfo.mcpTools.length} MCP tools)`;
+          }
           updateDetailContent(instance, detailInfo);
         }
       } catch (error) {
@@ -1525,13 +1540,22 @@
     }
     
     function updateDetailContent(instance, detailInfo) {
+      console.log('updateDetailContent called with:', detailInfo);
+      console.log('Detail info keys:', Object.keys(detailInfo || {}));
+      
       // Update MCP tools section
       const mcpSection = document.getElementById('mcpToolsSection');
-      if (mcpSection && detailInfo.mcpTools) {
+      console.log('MCP section element:', mcpSection);
+      console.log('MCP tools from detailInfo:', detailInfo?.mcpTools);
+      console.log('MCP tools is array?', Array.isArray(detailInfo?.mcpTools));
+      console.log('MCP tools length:', detailInfo?.mcpTools?.length);
+      
+      if (mcpSection && detailInfo && detailInfo.mcpTools) {
         let mcpContent = '';
         
         if (detailInfo.mcpTools.length > 0) {
-          mcpContent = '<div class="mcp-tools-grid">';
+          mcpContent = `<div style="color: yellow; font-size: 16px;">Found ${detailInfo.mcpTools.length} MCP tools:</div>`;
+          mcpContent += '<div class="mcp-tools-grid">';
           detailInfo.mcpTools.forEach(tool => {
             mcpContent += `
               <div class="mcp-tool">
@@ -1546,6 +1570,9 @@
         }
         
         mcpSection.innerHTML = '<h3 class="detail-section-title">MCP Tools</h3>' + mcpContent;
+        console.log('Updated MCP section HTML:', mcpSection.innerHTML);
+      } else {
+        console.log('MCP section not found or no MCP tools in detailInfo');
       }
       
       // Update agents section

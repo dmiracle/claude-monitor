@@ -717,18 +717,29 @@ ipcMain.handle('get-instance-details', async (event, pid, workingDirectory) => {
     const possibleConfigPaths = [
       path.join(workingDirectory, '.claude', 'claude_desktop_config.json'),
       path.join(workingDirectory, 'claude_desktop_config.json'),
-      path.join(require('os').homedir(), '.claude', 'claude_desktop_config.json')
+      path.join(require('os').homedir(), '.claude', 'claude_desktop_config.json'),
+      path.join(require('os').homedir(), 'Library', 'Application Support', 'Claude', 'claude_desktop_config.json'),
+      path.join('/Users', process.env.USER, 'Library', 'Application Support', 'Claude', 'claude_desktop_config.json')
     ];
+    
+    console.log('Searching for MCP configuration in:', possibleConfigPaths);
     
     for (const configPath of possibleConfigPaths) {
       try {
         if (fs.existsSync(configPath)) {
+          console.log(`Found config file at: ${configPath}`);
           const configContent = fs.readFileSync(configPath, 'utf8');
           const config = JSON.parse(configContent);
           
-          // Extract MCP tools from config
-          if (config.mcpServers) {
-            for (const [serverName, serverConfig] of Object.entries(config.mcpServers)) {
+          console.log('Config keys:', Object.keys(config));
+          
+          // Extract MCP tools from config - check both mcpServers and mcp_servers
+          const servers = config.mcpServers || config.mcp_servers || config.mcpTools;
+          
+          if (servers) {
+            console.log(`Found MCP servers:`, Object.keys(servers));
+            for (const [serverName, serverConfig] of Object.entries(servers)) {
+              console.log(`Processing server: ${serverName}`, serverConfig);
               details.mcpTools.push({
                 name: serverName,
                 type: serverConfig.command ? 'Local Server' : 'Remote Server',
@@ -736,6 +747,8 @@ ipcMain.handle('get-instance-details', async (event, pid, workingDirectory) => {
                 args: serverConfig.args
               });
             }
+          } else {
+            console.log('No MCP servers found in config');
           }
           
           break; // Found config, stop searching
@@ -744,6 +757,8 @@ ipcMain.handle('get-instance-details', async (event, pid, workingDirectory) => {
         console.error(`Error reading config from ${configPath}:`, error);
       }
     }
+    
+    console.log('Final MCP tools found:', details.mcpTools);
     
     // Look for agents configuration
     const agentConfigPaths = [
@@ -845,6 +860,7 @@ ipcMain.handle('get-instance-details', async (event, pid, workingDirectory) => {
       });
     });
     
+    console.log('Returning details from IPC handler:', JSON.stringify(details, null, 2));
     return details;
   } catch (error) {
     console.error('Error getting instance details:', error);
