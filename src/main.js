@@ -3,11 +3,15 @@ const path = require('path');
 const { spawn } = require('child_process');
 
 let mainWindow;
+let isMinimizedMode = false;
+
+const EXPANDED_SIZE = { width: 700, height: 450 };
+const MINIMIZED_SIZE = { width: 200, minHeight: 100 };
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 580,
-    height: 380,
+    width: EXPANDED_SIZE.width,
+    height: EXPANDED_SIZE.height,
     frame: true,
     resizable: true,
     webPreferences: {
@@ -653,4 +657,46 @@ ipcMain.handle('activate-window', async (event, pid, tty, workingDirectory) => {
       reject(new Error(`Failed to detect terminal: ${error.message}`));
     });
   });
+});
+
+// IPC handler to toggle window size
+ipcMain.handle('toggle-window-size', async (event, minimize) => {
+  if (!mainWindow) return { success: false, error: 'No window available' };
+  
+  try {
+    isMinimizedMode = minimize;
+    
+    if (minimize) {
+      mainWindow.setSize(MINIMIZED_SIZE.width, MINIMIZED_SIZE.minHeight);
+      mainWindow.setResizable(false);
+      mainWindow.setMinimumSize(MINIMIZED_SIZE.width, MINIMIZED_SIZE.minHeight);
+      mainWindow.setMaximumSize(MINIMIZED_SIZE.width, 600); // Allow vertical growth
+    } else {
+      mainWindow.setSize(EXPANDED_SIZE.width, EXPANDED_SIZE.height);
+      mainWindow.setResizable(true);
+      mainWindow.setMinimumSize(400, 200);
+      // Remove size constraints by setting very large maximum size
+      mainWindow.setMaximumSize(2000, 1200);
+    }
+    
+    return { success: true, minimized: minimize };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+// IPC handler to update window height based on content
+ipcMain.handle('update-window-height', async (event, instanceCount) => {
+  if (!mainWindow || !isMinimizedMode) return { success: false };
+  
+  try {
+    const tileHeight = 80; // Height per tile
+    const padding = 20; // Top and bottom padding
+    const newHeight = Math.max(MINIMIZED_SIZE.minHeight, (instanceCount * tileHeight) + padding);
+    
+    mainWindow.setSize(MINIMIZED_SIZE.width, newHeight);
+    return { success: true, height: newHeight };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
 });

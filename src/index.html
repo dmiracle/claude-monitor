@@ -28,7 +28,13 @@
       font-weight: 600;
     }
     
-    .refresh-btn {
+    .header-controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    
+    .refresh-btn, .view-toggle-btn {
       background: #0066cc;
       color: white;
       border: none;
@@ -38,8 +44,16 @@
       font-size: 11px;
     }
     
-    .refresh-btn:hover {
+    .refresh-btn:hover, .view-toggle-btn:hover {
       background: #0052a3;
+    }
+    
+    .view-toggle-btn {
+      background: #4CAF50;
+    }
+    
+    .view-toggle-btn:hover {
+      background: #45a049;
     }
     
     .instance {
@@ -367,21 +381,245 @@
       color: #888;
       padding: 20px;
     }
+    
+    /* Minimized view styles - tile-based layout */
+    body.minimized {
+      padding: 8px;
+    }
+    
+    body.minimized .header {
+      display: none !important;
+    }
+    
+    /* Expand button for minimized view */
+    .expand-button {
+      display: none;
+      position: fixed;
+      top: 4px;
+      right: 4px;
+      background: #4CAF50;
+      color: white;
+      width: 20px;
+      height: 20px;
+      border: 1px solid #45a049;
+      border-radius: 50%;
+      font-size: 10px;
+      cursor: pointer;
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .expand-button:hover {
+      background: #45a049;
+    }
+    
+    body.minimized .expand-button {
+      display: flex;
+    }
+    
+    body.minimized #instances-container {
+      margin-top: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    
+    .instances-container.minimized .instance {
+      width: 180px;
+      height: 75px;
+      padding: 6px;
+      margin-bottom: 0;
+      border-radius: 6px;
+      border: 2px solid;
+      border-color: #007acc;
+      background: #2a2a2a;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    .instances-container.minimized .instance:hover {
+      background: #333;
+      border-color: #4CAF50;
+      transform: scale(1.02);
+    }
+    
+    .instances-container.minimized .instance.headless {
+      border-color: #f14c4c;
+    }
+    
+    .instances-container.minimized .instance.working {
+      border-color: #4ec9b0;
+      background: #2a2d2a;
+    }
+    
+    .instances-container.minimized .instance.thinking {
+      border-color: #dcdcaa;
+      background: #2d2a2a;
+    }
+    
+    /* Hide all original content */
+    .instances-container.minimized .instance-header,
+    .instances-container.minimized .instance-path,
+    .instances-container.minimized .instance-details {
+      display: none !important;
+    }
+    
+    /* Tile header */
+    .tile-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+    
+    .tile-title {
+      font-size: 10px;
+      font-weight: 600;
+      color: #f0f0f0;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      white-space: nowrap;
+      flex: 1;
+      margin-right: 4px;
+      max-width: 120px;
+      min-width: 0;
+    }
+    
+    .tile-indicators {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+    
+    .tile-git-icon {
+      font-size: 10px;
+      color: #666;
+    }
+    
+    .tile-git-icon.has-git {
+      color: #f14c4c;
+    }
+    
+    .tile-activity {
+      font-size: 12px;
+      width: 16px;
+      height: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background: rgba(0, 122, 204, 0.2);
+    }
+    
+    .tile-activity.working {
+      background: rgba(78, 201, 176, 0.2);
+      color: #4ec9b0;
+    }
+    
+    .tile-activity.thinking {
+      background: rgba(220, 220, 170, 0.2);
+      color: #dcdcaa;
+    }
+    
+    .tile-activity.idle {
+      background: rgba(133, 133, 133, 0.2);
+      color: #858585;
+    }
+    
+    /* Tile content */
+    .tile-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+    
+    .tile-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      flex: 1;
+      min-width: 0;
+      max-width: 130px;
+    }
+    
+    .tile-git-info {
+      font-size: 8px;
+      color: #4fc1ff;
+      font-family: 'SF Mono', Consolas, monospace;
+      font-weight: 500;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      white-space: nowrap;
+      max-width: 120px;
+      min-width: 0;
+    }
+    
+    .tile-branch {
+      font-size: 7px;
+      color: #f9e71e;
+      font-family: 'SF Mono', Consolas, monospace;
+      font-weight: 600;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      white-space: nowrap;
+      max-width: 120px;
+      min-width: 0;
+    }
+    
+    .tile-no-git {
+      font-size: 8px;
+      color: #858585;
+      font-style: italic;
+    }
+    
+    .tile-headless {
+      font-size: 7px;
+      color: #f14c4c;
+      background: rgba(241, 76, 76, 0.2);
+      padding: 1px 3px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+    
+    .tile-duration {
+      font-size: 8px;
+      color: #4fc1ff;
+      background: rgba(79, 193, 255, 0.1);
+      padding: 2px 4px;
+      border-radius: 6px;
+      font-family: 'SF Mono', Consolas, monospace;
+      align-self: flex-end;
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
   </style>
 </head>
 <body>
   <div class="header">
     <h1>Claude Code Monitor</h1>
-    <button class="refresh-btn" onclick="refreshInstances()">Refresh</button>
+    <div class="header-controls">
+      <button class="view-toggle-btn" onclick="toggleView()" id="view-toggle">
+        Minimize
+      </button>
+      <button class="refresh-btn" onclick="refreshInstances()">Refresh</button>
+    </div>
   </div>
   
   <div id="instances-container">
     <div class="loading">Loading instances...</div>
   </div>
+  
+  <button class="expand-button" onclick="toggleView()" title="Expand to full view">⬆</button>
 
   <script>
     const { ipcRenderer } = require('electron');
     let currentInstances = new Map();
+    let isMinimized = false;
     
     // Function to calculate live session duration
     function calculateLiveDuration(startTimestamp) {
@@ -405,7 +643,7 @@
       }
     }
     
-    function createInstanceElement(instance) {
+    function createInstanceElement(instance) {        
       const div = document.createElement('div');
       let className = 'instance';
       if (instance.isHeadless) className += ' headless';
@@ -415,8 +653,41 @@
       div.className = className;
       div.dataset.pid = instance.pid;
       div.dataset.tty = instance.tty;
+      
       // Extract directory name from full path
       const dirName = instance.workingDirectory.split('/').pop() || instance.workingDirectory;
+      
+      // Create tile content for minimized view
+      const tileContent = `
+        <div class="tile-header">
+          <div class="tile-title">${dirName}</div>
+          <div class="tile-indicators">
+            <div class="tile-git-icon ${instance.gitInfo && instance.gitInfo.hasGit ? 'has-git' : ''}">
+              ${instance.gitInfo && instance.gitInfo.hasGit ? '📂' : '📄'}
+            </div>
+            <div class="tile-activity ${instance.activityState}">
+              ${instance.activityIndicator}
+            </div>
+          </div>
+        </div>
+        <div class="tile-content">
+          <div class="tile-info">
+            ${instance.gitInfo && instance.gitInfo.hasGit ? `
+              <div class="tile-git-info">
+                ${instance.gitInfo.repoOwner && instance.gitInfo.repoName ? 
+                  `${instance.gitInfo.repoOwner}/${instance.gitInfo.repoName}` : 'local repo'
+                }
+              </div>
+              <div class="tile-branch">${instance.gitInfo.branchName}</div>
+            ` : '<div class="tile-no-git">No Git</div>'}
+            ${instance.isHeadless ? '<div class="tile-headless">HEADLESS</div>' : ''}
+          </div>
+          <div class="tile-duration">${instance.startTimestamp ? calculateLiveDuration(instance.startTimestamp) : instance.elapsedTime}</div>
+        </div>
+      `;
+      
+      // Store both contents in the element
+      div.dataset.tileContent = tileContent;
       
       div.innerHTML = `
         <div class="instance-header">
@@ -494,7 +765,61 @@
       return div;
     }
     
+    function updateTileElement(element, instance) {
+      // Extract directory name from full path
+      const dirName = instance.workingDirectory.split('/').pop() || instance.workingDirectory;
+      
+      // Update class names based on current state
+      let className = 'instance';
+      if (instance.isHeadless) className += ' headless';
+      if (instance.activityState === 'working') className += ' working';
+      if (instance.activityState === 'thinking') className += ' thinking';
+      
+      if (element.className !== className) {
+        element.className = className;
+      }
+      
+      // Create updated tile content
+      const tileContent = `
+        <div class="tile-header">
+          <div class="tile-title">${dirName}</div>
+          <div class="tile-indicators">
+            <div class="tile-git-icon ${instance.gitInfo && instance.gitInfo.hasGit ? 'has-git' : ''}">
+              ${instance.gitInfo && instance.gitInfo.hasGit ? '📂' : '📄'}
+            </div>
+            <div class="tile-activity ${instance.activityState}">
+              ${instance.activityIndicator}
+            </div>
+          </div>
+        </div>
+        <div class="tile-content">
+          <div class="tile-info">
+            ${instance.gitInfo && instance.gitInfo.hasGit ? `
+              <div class="tile-git-info">
+                ${instance.gitInfo.repoOwner && instance.gitInfo.repoName ? 
+                  `${instance.gitInfo.repoOwner}/${instance.gitInfo.repoName}` : 'local repo'
+                }
+              </div>
+              <div class="tile-branch">${instance.gitInfo.branchName}</div>
+            ` : '<div class="tile-no-git">No Git</div>'}
+            ${instance.isHeadless ? '<div class="tile-headless">HEADLESS</div>' : ''}
+          </div>
+          <div class="tile-duration">${instance.startTimestamp ? calculateLiveDuration(instance.startTimestamp) : instance.elapsedTime}</div>
+        </div>
+      `;
+      
+      // Update the element content and store the new tile content
+      element.innerHTML = tileContent;
+      element.dataset.tileContent = tileContent;
+    }
+    
     function updateInstanceElement(element, instance) {
+      // Check if we're in minimized mode and update tile content
+      if (document.body.classList.contains('minimized')) {
+        updateTileElement(element, instance);
+        return;
+      }
+      
       // Update session duration with live calculation
       const sessionDurationEl = element.querySelector('.session-duration');
       if (sessionDurationEl) {
@@ -679,6 +1004,19 @@
           currentInstances.set(instance.pid, instance);
         });
         
+        // Update window height if in minimized mode
+        if (isMinimized) {
+          // Switch to tile content for new elements
+          document.querySelectorAll('.instance').forEach(el => {
+            if (el.dataset.tileContent && document.body.classList.contains('minimized')) {
+              el.innerHTML = el.dataset.tileContent;
+            }
+          });
+          
+          // Update window height
+          ipcRenderer.invoke('update-window-height', instances.length);
+        }
+        
       } catch (error) {
         if (!container.querySelector('.no-instances')) {
           container.innerHTML = `<div class="no-instances">Error loading instances: ${error.message}</div>`;
@@ -691,26 +1029,108 @@
       loadInstances();
     }
     
+    async function toggleView() {
+      const container = document.getElementById('instances-container');
+      const toggleBtn = document.getElementById('view-toggle');
+      
+      isMinimized = !isMinimized;
+      
+      try {
+        // Resize the window first
+        const result = await ipcRenderer.invoke('toggle-window-size', isMinimized);
+        
+        if (result.success) {
+          if (isMinimized) {
+            container.classList.add('minimized');
+            document.body.classList.add('minimized');
+            toggleBtn.textContent = 'Expand';
+            
+            // Switch to tile content
+            document.querySelectorAll('.instance').forEach(el => {
+              if (el.dataset.tileContent) {
+                el.innerHTML = el.dataset.tileContent;
+              }
+            });
+            
+            // Update window height based on number of instances
+            const instanceCount = document.querySelectorAll('.instance').length;
+            ipcRenderer.invoke('update-window-height', instanceCount);
+            
+          } else {
+            container.classList.remove('minimized');
+            document.body.classList.remove('minimized');
+            toggleBtn.textContent = 'Minimize';
+            
+            // Reload instances to restore expanded content
+            loadInstances();
+          }
+          
+          // Store preference in localStorage
+          localStorage.setItem('claude-monitor-minimized', isMinimized.toString());
+        } else {
+          console.error('Failed to resize window:', result.error);
+          // Revert the state if window resize failed
+          isMinimized = !isMinimized;
+        }
+      } catch (error) {
+        console.error('Error toggling view:', error);
+        // Revert the state if there was an error
+        isMinimized = !isMinimized;
+      }
+    }
+    
+    // Load saved view preference
+    async function loadViewPreference() {
+      const saved = localStorage.getItem('claude-monitor-minimized');
+      if (saved === 'true') {
+        isMinimized = false; // Set to false first so toggle will work correctly
+        await toggleView();
+      }
+    }
+    
     // Load instances on startup
-    loadInstances();
+    loadViewPreference().then(() => {
+      loadInstances();
+    });
     
     // Auto-refresh every 5 seconds
     setInterval(loadInstances, 5000);
     
     // Update live durations every second
     setInterval(() => {
-      document.querySelectorAll('.session-duration').forEach(el => {
-        const instanceElement = el.closest('.instance');
-        const pid = parseInt(instanceElement.dataset.pid);
-        const instance = currentInstances.get(pid);
-        
-        if (instance && instance.startTimestamp) {
-          const liveDuration = calculateLiveDuration(instance.startTimestamp);
-          if (el.textContent !== liveDuration) {
-            el.textContent = liveDuration;
+      if (document.body.classList.contains('minimized')) {
+        // Update tile durations
+        document.querySelectorAll('.tile-duration').forEach(el => {
+          const instanceElement = el.closest('.instance');
+          if (instanceElement) {
+            const pid = parseInt(instanceElement.dataset.pid);
+            const instance = currentInstances.get(pid);
+            
+            if (instance && instance.startTimestamp) {
+              const liveDuration = calculateLiveDuration(instance.startTimestamp);
+              if (el.textContent !== liveDuration) {
+                el.textContent = liveDuration;
+              }
+            }
           }
-        }
-      });
+        });
+      } else {
+        // Update expanded view durations
+        document.querySelectorAll('.session-duration').forEach(el => {
+          const instanceElement = el.closest('.instance');
+          if (instanceElement) {
+            const pid = parseInt(instanceElement.dataset.pid);
+            const instance = currentInstances.get(pid);
+            
+            if (instance && instance.startTimestamp) {
+              const liveDuration = calculateLiveDuration(instance.startTimestamp);
+              if (el.textContent !== liveDuration) {
+                el.textContent = liveDuration;
+              }
+            }
+          }
+        });
+      }
     }, 1000);
   </script>
 </body>
