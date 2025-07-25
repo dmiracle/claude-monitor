@@ -9,7 +9,7 @@ An Electron app that displays a small window showing all running Claude Code ins
 - Shows session elapsed time
 - Indicates whether instances are headless or interactive
 - Auto-refreshes every 5 seconds
-- Always-on-top window for easy monitoring
+- Focusable window that can lose focus when needed
 - Clean, dark UI optimized for development
 
 ## Installation
@@ -51,4 +51,4 @@ The app uses Electron's main process to execute system commands (`ps` and `lsof`
 - Color-coded instances (blue for interactive, orange for headless)
 - Monospace font for directory paths
 - Compact layout showing essential information
-- Always-on-top for easy monitoring during development
+- Allows window focus changes for better workflow integration
