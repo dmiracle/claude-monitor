@@ -745,13 +745,12 @@
     let isMinimized = false;
     let currentRecording = null;
     let recognition = null;
-    let accumulatedTranscript = '';
     
     // Initialize Web Speech API
     function initSpeechRecognition() {
       if ('webkitSpeechRecognition' in window) {
         recognition = new webkitSpeechRecognition();
-        recognition.continuous = true;  // Keep recording while button is held
+        recognition.continuous = true;  // Keep recording until manually stopped
         recognition.interimResults = true;
         recognition.lang = 'en-US';
         recognition.maxAlternatives = 1;
@@ -774,15 +773,14 @@
             }
           }
           
-          // Accumulate final transcripts
-          if (finalTranscript) {
-            accumulatedTranscript += (accumulatedTranscript ? ' ' : '') + finalTranscript;
+          // Send final transcripts immediately
+          if (finalTranscript && currentRecording) {
+            sendDictatedText(currentRecording.pid, currentRecording.tty, finalTranscript);
           }
           
           // Show real-time transcription (optional - could add UI for this)
           console.log('Interim:', interimTranscript);
           console.log('Final:', finalTranscript);
-          console.log('Accumulated:', accumulatedTranscript);
         };
         
         recognition.onerror = (event) => {
@@ -803,8 +801,8 @@
       }
     }
     
-    // Start voice dictation for a specific instance
-    function startVoiceDictation(pid, tty) {
+    // Toggle voice dictation for a specific instance
+    function toggleVoiceDictation(pid, tty) {
       if (!recognition) {
         initSpeechRecognition();
       }
@@ -814,13 +812,19 @@
         return;
       }
       
-      // Don't start if already recording
-      if (currentRecording) {
+      // If recording this instance, stop it
+      if (currentRecording && currentRecording.pid === pid) {
+        stopRecording();
         return;
       }
       
+      // If recording another instance, stop that first
+      if (currentRecording) {
+        stopRecording();
+      }
+      
+      // Start recording for this instance
       currentRecording = { pid, tty };
-      accumulatedTranscript = ''; // Reset accumulated transcript
       
       try {
         recognition.start();
@@ -843,18 +847,11 @@
       if (recognition && currentRecording) {
         try {
           recognition.stop();
-          
-          // Send accumulated transcript if we have any
-          if (accumulatedTranscript && accumulatedTranscript.trim()) {
-            const { pid, tty } = currentRecording;
-            sendDictatedText(pid, tty, accumulatedTranscript.trim());
-          }
         } catch (error) {
           console.error('Error stopping recognition:', error);
         }
       }
       currentRecording = null;
-      accumulatedTranscript = ''; // Clear accumulated transcript
       updateRecordingUI(false);
     }
     
@@ -864,10 +861,10 @@
       document.querySelectorAll('.voice-btn, .tile-voice-btn').forEach(btn => {
         if (isRecording && currentRecording) {
           // Only update the button for the active recording
-          // Extract PID from the onmousedown attribute
-          const onmousedown = btn.getAttribute('onmousedown');
-          if (onmousedown) {
-            const pidMatch = onmousedown.match(/startVoiceDictation\((\d+)/);
+          // Extract PID from the onclick attribute
+          const onclick = btn.getAttribute('onclick');
+          if (onclick) {
+            const pidMatch = onclick.match(/toggleVoiceDictation\((\d+)/);
             if (pidMatch) {
               const btnPid = parseInt(pidMatch[1]);
               if (btnPid === currentRecording.pid) {
@@ -1055,11 +1052,8 @@
           </div>
           <div class="tile-buttons">
             <button class="tile-voice-btn" 
-              onmousedown="event.preventDefault(); event.stopPropagation(); startVoiceDictation(${instance.pid}, '${instance.tty}'); return false;" 
-              onmouseup="event.preventDefault(); event.stopPropagation(); stopRecording(); return false;"
-              onmouseleave="stopRecording();"
-              onclick="event.preventDefault(); event.stopPropagation(); return false;"
-              title="Hold to record">
+              onclick="event.preventDefault(); event.stopPropagation(); toggleVoiceDictation(${instance.pid}, '${instance.tty}'); return false;"
+              title="Click to start/stop recording">
               🎤
             </button>
             <button class="tile-activate-btn"
@@ -1090,11 +1084,8 @@
           </div>
           <div class="session-duration">${instance.startTimestamp ? calculateLiveDuration(instance.startTimestamp) : instance.elapsedTime}</div>
           <button class="voice-btn" 
-            onmousedown="event.preventDefault(); event.stopPropagation(); startVoiceDictation(${instance.pid}, '${instance.tty}'); return false;" 
-            onmouseup="event.preventDefault(); event.stopPropagation(); stopRecording(); return false;"
-            onmouseleave="stopRecording();"
-            onclick="event.preventDefault(); event.stopPropagation(); return false;"
-            title="Hold to record">
+            onclick="event.preventDefault(); event.stopPropagation(); toggleVoiceDictation(${instance.pid}, '${instance.tty}'); return false;"
+            title="Click to start/stop recording">
             🎤
           </button>
           <button class="activate-btn"
@@ -1178,11 +1169,8 @@
           </div>
           <div class="tile-buttons">
             <button class="tile-voice-btn" 
-              onmousedown="event.preventDefault(); event.stopPropagation(); startVoiceDictation(${instance.pid}, '${instance.tty}'); return false;" 
-              onmouseup="event.preventDefault(); event.stopPropagation(); stopRecording(); return false;"
-              onmouseleave="stopRecording();"
-              onclick="event.preventDefault(); event.stopPropagation(); return false;"
-              title="Hold to record">
+              onclick="event.preventDefault(); event.stopPropagation(); toggleVoiceDictation(${instance.pid}, '${instance.tty}'); return false;"
+              title="Click to start/stop recording">
               🎤
             </button>
             <button class="tile-activate-btn"
