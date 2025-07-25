@@ -4,8 +4,12 @@
 <dict>
     <key>NSMicrophoneUsageDescription</key>
     <string>Claude Monitor needs microphone access for voice dictation to send commands to Claude instances.</string>
+    <key>NSCameraUsageDescription</key>
+    <string>Claude Monitor does not use the camera, but this permission is required for microphone access.</string>
     <key>NSCameraUseContinuityCameraDeviceType</key>
     <true/>
+    <key>AVCaptureDeviceType</key>
+    <string>AVCaptureDeviceTypeContinuityCamera</string>
     <key>CFBundleIdentifier</key>
     <string>com.dylan.claude-monitor</string>
     <key>CFBundleName</key>
