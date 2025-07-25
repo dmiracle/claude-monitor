@@ -705,7 +705,8 @@ ipcMain.handle('update-window-height', async (event, instanceCount) => {
 ipcMain.handle('get-instance-details', async (event, pid, workingDirectory) => {
   try {
     const details = {
-      mcpTools: []
+      mcpTools: [],
+      agents: []
     };
     
     // Try to find MCP configuration file
@@ -744,6 +745,82 @@ ipcMain.handle('get-instance-details', async (event, pid, workingDirectory) => {
       }
     }
     
+    // Look for agents configuration
+    const agentConfigPaths = [
+      path.join(workingDirectory, '.claude', 'agents.json'),
+      path.join(workingDirectory, 'agents.json'),
+      path.join(require('os').homedir(), '.claude', 'agents.json')
+    ];
+    
+    // Also check for CLAUDE.md which might define custom agents
+    const claudeMdPaths = [
+      path.join(workingDirectory, 'CLAUDE.md'),
+      path.join(workingDirectory, '.claude', 'CLAUDE.md')
+    ];
+    
+    // Check agents.json files
+    for (const agentPath of agentConfigPaths) {
+      try {
+        if (fs.existsSync(agentPath)) {
+          const agentContent = fs.readFileSync(agentPath, 'utf8');
+          const agentConfig = JSON.parse(agentContent);
+          
+          if (Array.isArray(agentConfig)) {
+            details.agents = agentConfig;
+          } else if (agentConfig.agents && Array.isArray(agentConfig.agents)) {
+            details.agents = agentConfig.agents;
+          }
+          
+          break; // Found agents config
+        }
+      } catch (error) {
+        console.error(`Error reading agents from ${agentPath}:`, error);
+      }
+    }
+    
+    // Check CLAUDE.md for custom agent definitions
+    for (const claudePath of claudeMdPaths) {
+      try {
+        if (fs.existsSync(claudePath) && details.agents.length === 0) {
+          const claudeContent = fs.readFileSync(claudePath, 'utf8');
+          
+          // Look for agent definitions in CLAUDE.md
+          const agentMatches = claudeContent.match(/## Custom Agents?\s*\n([\s\S]*?)(?=\n##|$)/i);
+          if (agentMatches) {
+            const agentSection = agentMatches[1];
+            // Parse agent definitions (simple pattern matching)
+            const agentDefs = agentSection.match(/- \*\*([^*]+)\*\*:?\s*([^\n]+)/g);
+            if (agentDefs) {
+              agentDefs.forEach(def => {
+                const match = def.match(/- \*\*([^*]+)\*\*:?\s*(.+)/);
+                if (match) {
+                  details.agents.push({
+                    name: match[1].trim(),
+                    description: match[2].trim(),
+                    source: 'CLAUDE.md'
+                  });
+                }
+              });
+            }
+          }
+        }
+      } catch (error) {
+        console.error(`Error reading CLAUDE.md from ${claudePath}:`, error);
+      }
+    }
+    
+    // Add built-in Claude agents that are always available
+    const builtInAgents = [
+      {
+        name: 'general-purpose',
+        description: 'General-purpose agent for researching complex questions and multi-step tasks',
+        builtin: true
+      }
+    ];
+    
+    // Merge built-in agents with custom ones
+    details.agents = [...builtInAgents, ...details.agents];
+    
     // Get additional process info
     const psInfo = spawn('ps', ['-p', pid.toString(), '-o', 'rss,vsz,comm']);
     let psOutput = '';
@@ -771,6 +848,6 @@ ipcMain.handle('get-instance-details', async (event, pid, workingDirectory) => {
     return details;
   } catch (error) {
     console.error('Error getting instance details:', error);
-    return { mcpTools: [] };
+    return { mcpTools: [], agents: [] };
   }
 });

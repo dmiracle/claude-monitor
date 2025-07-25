@@ -781,6 +781,29 @@
       color: #858585;
       font-size: 11px;
     }
+    
+    .agent-card {
+      background: #2a2a2a;
+      border: 1px solid #404040;
+      border-radius: 4px;
+      padding: 12px;
+      font-size: 12px;
+    }
+    
+    .agent-card.builtin {
+      border-color: #4fc1ff;
+    }
+    
+    .agent-name {
+      color: #dcdcaa;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    
+    .agent-description {
+      color: #858585;
+      font-size: 11px;
+    }
   </style>
 </head>
 <body>
@@ -1486,7 +1509,14 @@
         </div>
         
         <div class="detail-section" id="mcpToolsSection">
-          <h3 class="detail-section-title">MCP Tools & Agents</h3>
+          <h3 class="detail-section-title">MCP Tools</h3>
+          <div class="detail-item">
+            <span class="detail-value" style="color: #858585;">Loading...</span>
+          </div>
+        </div>
+        
+        <div class="detail-section" id="agentsSection">
+          <h3 class="detail-section-title">Available Agents</h3>
           <div class="detail-item">
             <span class="detail-value" style="color: #858585;">Loading...</span>
           </div>
@@ -1515,7 +1545,31 @@
           mcpContent = '<div class="detail-item"><span class="detail-value" style="color: #858585;">No MCP tools detected</span></div>';
         }
         
-        mcpSection.innerHTML = '<h3 class="detail-section-title">MCP Tools & Agents</h3>' + mcpContent;
+        mcpSection.innerHTML = '<h3 class="detail-section-title">MCP Tools</h3>' + mcpContent;
+      }
+      
+      // Update agents section
+      const agentsSection = document.getElementById('agentsSection');
+      if (agentsSection && detailInfo.agents) {
+        let agentsContent = '';
+        
+        if (detailInfo.agents.length > 0) {
+          agentsContent = '<div class="mcp-tools-grid">';
+          detailInfo.agents.forEach(agent => {
+            const isBuiltin = agent.builtin === true;
+            agentsContent += `
+              <div class="agent-card ${isBuiltin ? 'builtin' : ''}">
+                <div class="agent-name">${agent.name}${isBuiltin ? ' (built-in)' : ''}</div>
+                <div class="agent-description">${agent.description || agent.source || 'Custom agent'}</div>
+              </div>
+            `;
+          });
+          agentsContent += '</div>';
+        } else {
+          agentsContent = '<div class="detail-item"><span class="detail-value" style="color: #858585;">No agents detected</span></div>';
+        }
+        
+        agentsSection.innerHTML = '<h3 class="detail-section-title">Available Agents</h3>' + agentsContent;
       }
     }
   </script>
