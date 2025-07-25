@@ -28,7 +28,13 @@
       font-weight: 600;
     }
     
-    .refresh-btn {
+    .header-controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    
+    .refresh-btn, .view-toggle-btn {
       background: #0066cc;
       color: white;
       border: none;
@@ -38,8 +44,16 @@
       font-size: 11px;
     }
     
-    .refresh-btn:hover {
+    .refresh-btn:hover, .view-toggle-btn:hover {
       background: #0052a3;
+    }
+    
+    .view-toggle-btn {
+      background: #4CAF50;
+    }
+    
+    .view-toggle-btn:hover {
+      background: #45a049;
     }
     
     .instance {
@@ -367,12 +381,68 @@
       color: #888;
       padding: 20px;
     }
+    
+    /* Minimized view styles */
+    .instances-container.minimized .instance {
+      padding: 6px 12px;
+      margin-bottom: 4px;
+    }
+    
+    .instances-container.minimized .instance-path,
+    .instances-container.minimized .instance-details,
+    .instances-container.minimized .full-path,
+    .instances-container.minimized .activity-meter,
+    .instances-container.minimized .git-repo-info,
+    .instances-container.minimized .git-branch-info,
+    .instances-container.minimized .model-info {
+      display: none !important;
+    }
+    
+    .instances-container.minimized .instance-header {
+      grid-template-columns: auto 1fr auto auto;
+      gap: 6px;
+      margin-bottom: 0;
+    }
+    
+    .instances-container.minimized .working-dir-name {
+      font-size: 12px;
+      font-weight: 500;
+    }
+    
+    .instances-container.minimized .session-duration {
+      font-size: 9px;
+      padding: 1px 4px;
+    }
+    
+    .instances-container.minimized .status {
+      font-size: 8px;
+      padding: 2px 6px;
+    }
+    
+    .instances-container.minimized .activity {
+      width: 16px;
+      height: 16px;
+      font-size: 14px;
+    }
+    
+    .instances-container.minimized .pid {
+      font-size: 10px;
+    }
+    
+    .instances-container.minimized .tty {
+      font-size: 8px;
+    }
   </style>
 </head>
 <body>
   <div class="header">
     <h1>Claude Code Monitor</h1>
-    <button class="refresh-btn" onclick="refreshInstances()">Refresh</button>
+    <div class="header-controls">
+      <button class="view-toggle-btn" onclick="toggleView()" id="view-toggle">
+        Minimize
+      </button>
+      <button class="refresh-btn" onclick="refreshInstances()">Refresh</button>
+    </div>
   </div>
   
   <div id="instances-container">
@@ -382,6 +452,7 @@
   <script>
     const { ipcRenderer } = require('electron');
     let currentInstances = new Map();
+    let isMinimized = false;
     
     // Function to calculate live session duration
     function calculateLiveDuration(startTimestamp) {
@@ -691,7 +762,35 @@
       loadInstances();
     }
     
+    function toggleView() {
+      const container = document.getElementById('instances-container');
+      const toggleBtn = document.getElementById('view-toggle');
+      
+      isMinimized = !isMinimized;
+      
+      if (isMinimized) {
+        container.classList.add('minimized');
+        toggleBtn.textContent = 'Expand';
+      } else {
+        container.classList.remove('minimized');
+        toggleBtn.textContent = 'Minimize';
+      }
+      
+      // Store preference in localStorage
+      localStorage.setItem('claude-monitor-minimized', isMinimized.toString());
+    }
+    
+    // Load saved view preference
+    function loadViewPreference() {
+      const saved = localStorage.getItem('claude-monitor-minimized');
+      if (saved === 'true') {
+        isMinimized = false; // Set to false first so toggle will work correctly
+        toggleView();
+      }
+    }
+    
     // Load instances on startup
+    loadViewPreference();
     loadInstances();
     
     // Auto-refresh every 5 seconds
