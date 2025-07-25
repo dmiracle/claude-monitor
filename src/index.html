@@ -486,6 +486,8 @@
       white-space: nowrap;
       flex: 1;
       margin-right: 4px;
+      max-width: 120px;
+      min-width: 0;
     }
     
     .tile-indicators {
@@ -540,6 +542,9 @@
       display: flex;
       flex-direction: column;
       gap: 2px;
+      flex: 1;
+      min-width: 0;
+      max-width: 130px;
     }
     
     .tile-git-info {
@@ -550,6 +555,8 @@
       text-overflow: ellipsis;
       overflow: hidden;
       white-space: nowrap;
+      max-width: 120px;
+      min-width: 0;
     }
     
     .tile-branch {
@@ -560,6 +567,8 @@
       text-overflow: ellipsis;
       overflow: hidden;
       white-space: nowrap;
+      max-width: 120px;
+      min-width: 0;
     }
     
     .tile-no-git {
@@ -585,6 +594,8 @@
       border-radius: 6px;
       font-family: 'SF Mono', Consolas, monospace;
       align-self: flex-end;
+      flex-shrink: 0;
+      white-space: nowrap;
     }
   </style>
 </head>
