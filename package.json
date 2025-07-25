@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Monitor running Claude Code instances",
   "main": "src/main.js",
+  "license": "Apache-2.0",
   "scripts": {
     "start": "electron .",
     "dev": "electron . --dev",
