@@ -5,13 +5,13 @@ const { spawn } = require('child_process');
 let mainWindow;
 let isMinimizedMode = false;
 
-const EXPANDED_SIZE = { width: 580, height: 380 };
+const EXPANDED_SIZE = { width: 700, height: 450 };
 const MINIMIZED_SIZE = { width: 200, minHeight: 100 };
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 580,
-    height: 380,
+    width: EXPANDED_SIZE.width,
+    height: EXPANDED_SIZE.height,
     frame: true,
     resizable: true,
     webPreferences: {
@@ -675,7 +675,8 @@ ipcMain.handle('toggle-window-size', async (event, minimize) => {
       mainWindow.setSize(EXPANDED_SIZE.width, EXPANDED_SIZE.height);
       mainWindow.setResizable(true);
       mainWindow.setMinimumSize(400, 200);
-      mainWindow.setMaximumSize(0, 0); // Remove max size constraints
+      // Remove size constraints by setting very large maximum size
+      mainWindow.setMaximumSize(2000, 1200);
     }
     
     return { success: true, minimized: minimize };
