@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Claude Code Monitor</title>
+  <style>
+    body {
+      font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 12px;
+      background: #181818;
+      color: #cccccc;
+      font-size: 12px;
+    }
+    
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #333;
+    }
+    
+    h1 {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    
+    .refresh-btn {
+      background: #0066cc;
+      color: white;
+      border: none;
+      padding: 4px 8px;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 11px;
+    }
+    
+    .refresh-btn:hover {
+      background: #0052a3;
+    }
+    
+    .instance {
+      background: #252526;
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 8px;
+      border: 1px solid #3c3c3c;
+      border-left: 3px solid #007acc;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    
+    .instance:hover {
+      background: #2d2d30;
+      border-color: #464647;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    
+    .instance.headless {
+      border-left-color: #f14c4c;
+    }
+    
+    .instance.working {
+      border-left-color: #4ec9b0;
+      background: #252826;
+    }
+    
+    .instance.thinking {
+      border-left-color: #dcdcaa;
+      background: #26252a;
+    }
+    
+    .instance-header {
+      display: grid;
+      grid-template-columns: auto 1fr auto auto;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 3px;
+    }
+    
+    .pid {
+      font-weight: 600;
+      color: #569cd6;
+      font-family: 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+    }
+    
+    .headless .pid {
+      color: #f14c4c;
+    }
+    
+    .elapsed-time {
+      font-size: 10px;
+      color: #858585;
+      background: #3c3c3c;
+      padding: 2px 6px;
+      border-radius: 10px;
+      font-family: 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+    }
+    
+    .tty {
+      font-size: 9px;
+      color: #858585;
+      font-family: 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+      background: #3a3a3a;
+      padding: 1px 4px;
+      border-radius: 3px;
+    }
+    
+    .activity {
+      font-size: 16px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 20px;
+      height: 20px;
+    }
+    
+    .process-info {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    .status-time {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      justify-content: flex-end;
+    }
+    
+    .git-repo-info {
+      font-family: 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+      font-size: 10px;
+      color: #4fc1ff;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    
+    .git-repo-info::before {
+      content: "📁";
+      font-size: 11px;
+    }
+    
+    .git-branch-info {
+      font-family: 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+      font-size: 10px;
+      color: #f9e71e;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      grid-column: span 2;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-weight: 500;
+    }
+    
+    .git-branch-info::before {
+      content: "🌿";
+      font-size: 11px;
+      flex-shrink: 0;
+    }
+    
+    .activity-working {
+      color: #4ec9b0;
+      background: rgba(78, 201, 176, 0.15);
+      border-radius: 50%;
+    }
+    
+    .activity-thinking {
+      color: #dcdcaa;
+      background: rgba(220, 220, 170, 0.15);
+      border-radius: 50%;
+    }
+    
+    .activity-waiting {
+      color: #4fc1ff;
+      background: rgba(79, 193, 255, 0.15);
+      border-radius: 50%;
+    }
+    
+    .activity-idle {
+      color: #858585;
+      background: rgba(133, 133, 133, 0.15);
+      border-radius: 50%;
+    }
+    
+    .instance-details {
+      display: grid;
+      grid-template-columns: auto 1fr 1fr auto;
+      align-items: center;
+      gap: 8px;
+      margin-top: 2px;
+    }
+    
+    .working-dir-name {
+      font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      color: #f0f0f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    
+    .working-dir-name::before {
+      content: "📂";
+      font-size: 16px;
+    }
+    
+    .instance-path {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 12px;
+      margin: 6px 0;
+    }
+    
+    .activity-meter {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+      font-size: 9px;
+      color: #858585;
+    }
+    
+    .dev-activity {
+      background: #3c3c3c;
+      padding: 2px 6px;
+      border-radius: 8px;
+      color: #cccccc;
+    }
+    
+    .dev-activity.high {
+      background: rgba(78, 201, 176, 0.2);
+      color: #4ec9b0;
+      border: 1px solid rgba(78, 201, 176, 0.3);
+    }
+    
+    .dev-activity.medium {
+      background: rgba(220, 220, 170, 0.2);
+      color: #dcdcaa;
+      border: 1px solid rgba(220, 220, 170, 0.3);
+    }
+    
+    .message-count {
+      background: rgba(79, 193, 255, 0.1);
+      color: #4fc1ff;
+      padding: 2px 6px;
+      border-radius: 8px;
+      border: 1px solid rgba(79, 193, 255, 0.2);
+    }
+    
+    .session-duration {
+      background: rgba(79, 193, 255, 0.1);
+      color: #4fc1ff;
+      padding: 2px 6px;
+      border-radius: 8px;
+      border: 1px solid rgba(79, 193, 255, 0.2);
+    }
+    
+    .state-info {
+      background: #3a3a3a;
+      color: #cccccc;
+      padding: 2px 6px;
+      border-radius: 8px;
+      font-weight: 500;
+      text-transform: uppercase;
+      font-size: 8px;
+      letter-spacing: 0.5px;
+    }
+    
+    .full-path {
+      font-family: 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+      font-size: 9px;
+      color: #858585;
+      word-break: break-all;
+      background: rgba(60, 60, 60, 0.3);
+      padding: 4px 8px;
+      border-radius: 4px;
+      border-left: 2px solid #007acc;
+    }
+    
+    .git-info {
+      font-family: 'SF Mono', Monaco, monospace;
+      font-size: 9px;
+      color: #888;
+      margin-top: 1px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    .model-info {
+      font-family: 'SF Mono', Monaco, monospace;
+      font-size: 9px;
+      color: #888;
+      margin-top: 1px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    
+    .model-info {
+      font-family: 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+      font-size: 10px;
+      color: #c586c0;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: rgba(197, 134, 192, 0.1);
+      padding: 3px 6px;
+      border-radius: 12px;
+      border: 1px solid rgba(197, 134, 192, 0.2);
+    }
+    
+    .model-name {
+      color: #c586c0;
+      font-weight: 500;
+    }
+    
+    .repo-info {
+      color: #00aaff;
+    }
+    
+    .branch-info {
+      color: #ffaa00;
+    }
+    
+    .git-icon {
+      color: #666;
+    }
+    
+    .status {
+      font-size: 9px;
+      padding: 3px 8px;
+      border-radius: 12px;
+      background: #3c3c3c;
+      color: #cccccc;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border: 1px solid #525252;
+    }
+    
+    .status.headless {
+      background: rgba(241, 76, 76, 0.2);
+      color: #f14c4c;
+      border-color: #f14c4c;
+    }
+    
+    .no-instances {
+      text-align: center;
+      color: #888;
+      padding: 40px 20px;
+    }
+    
+    .loading {
+      text-align: center;
+      color: #888;
+      padding: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Claude Code Monitor</h1>
+    <button class="refresh-btn" onclick="refreshInstances()">Refresh</button>
+  </div>
+  
+  <div id="instances-container">
+    <div class="loading">Loading instances...</div>
+  </div>
+
+  <script>
+    const { ipcRenderer } = require('electron');
+    let currentInstances = new Map();
+    
+    // Function to calculate live session duration
+    function calculateLiveDuration(startTimestamp) {
+      if (!startTimestamp) return 'Unknown';
+      
+      const now = Date.now();
+      const durationMs = now - startTimestamp;
+      const seconds = Math.floor(durationMs / 1000);
+      const minutes = Math.floor(seconds / 60);
+      const hours = Math.floor(minutes / 60);
+      const days = Math.floor(hours / 24);
+      
+      if (days > 0) {
+        return `${days}d ${hours % 24}h ${minutes % 60}m`;
+      } else if (hours > 0) {
+        return `${hours}h ${minutes % 60}m`;
+      } else if (minutes > 0) {
+        return `${minutes}m ${seconds % 60}s`;
+      } else {
+        return `${seconds}s`;
+      }
+    }
+    
+    function createInstanceElement(instance) {
+      const div = document.createElement('div');
+      let className = 'instance';
+      if (instance.isHeadless) className += ' headless';
+      if (instance.activityState === 'working') className += ' working';
+      if (instance.activityState === 'thinking') className += ' thinking';
+      
+      div.className = className;
+      div.dataset.pid = instance.pid;
+      div.dataset.tty = instance.tty;
+      // Extract directory name from full path
+      const dirName = instance.workingDirectory.split('/').pop() || instance.workingDirectory;
+      
+      div.innerHTML = `
+        <div class="instance-header">
+          <div class="process-info">
+            <div class="activity activity-${instance.activityState}" title="${instance.activityState} (${instance.cpuPercent}% CPU)" style="display: inline-block; margin-right: 6px;">
+              ${instance.activityIndicator}
+            </div>
+            <span class="pid">PID ${instance.pid}</span>
+            <span class="tty" style="margin-left: 4px;">${instance.tty}</span>
+          </div>
+          <div class="working-dir-name">${dirName}</div>
+          <div class="status ${instance.isHeadless ? 'headless' : ''}">
+            ${instance.isHeadless ? 'HEADLESS' : 'INTERACTIVE'}
+          </div>
+          <div class="session-duration">${instance.startTimestamp ? calculateLiveDuration(instance.startTimestamp) : instance.elapsedTime}</div>
+        </div>
+        <div class="instance-path">
+          <div class="full-path">${instance.workingDirectory}</div>
+          <div class="activity-meter">
+            ${instance.modelInfo && instance.modelInfo.sessionStats ? `
+              <div class="message-count">${instance.modelInfo.sessionStats.messageCount} msgs</div>
+              <div class="dev-activity ${instance.modelInfo.sessionStats.conversationLength > 20 ? 'high' : instance.modelInfo.sessionStats.conversationLength > 5 ? 'medium' : ''}">${instance.modelInfo.sessionStats.conversationLength} exchanges</div>
+            ` : ''}
+          </div>
+        </div>
+        <div class="instance-details">
+          <div class="git-repo-info">
+            ${instance.gitInfo && instance.gitInfo.hasGit ? 
+              (instance.gitInfo.repoOwner && instance.gitInfo.repoName ? 
+                `${instance.gitInfo.repoOwner}/${instance.gitInfo.repoName}` : 'local repo'
+              ) : ''
+            }
+          </div>
+          <div class="git-branch-info">
+            ${instance.gitInfo && instance.gitInfo.hasGit ? instance.gitInfo.branchName : ''}
+          </div>
+          <div class="model-info">
+            ${instance.modelInfo && instance.modelInfo.hasModel ? `
+              <span>🤖</span>
+              <span class="model-name">${instance.modelInfo.modelAlias || instance.modelInfo.model}</span>
+            ` : ''}
+          </div>
+        </div>
+      `;
+      
+      // Add click handler for window activation
+      div.addEventListener('click', async () => {
+        try {
+          if (instance.isHeadless) {
+            console.log(`Spawning iTerm2 window for headless process ${instance.pid}`);
+          } else {
+            console.log(`Activating window for process ${instance.pid} (TTY: ${instance.tty})`);
+          }
+          
+          const result = await ipcRenderer.invoke('activate-window', instance.pid, instance.tty, instance.workingDirectory);
+          console.log('Window activation result:', result);
+          
+          // Visual feedback
+          div.style.background = '#0066cc';
+          setTimeout(() => {
+            div.style.background = '#2a2a2a';
+          }, 200);
+          
+        } catch (error) {
+          console.error('Failed to activate/spawn window:', error.message);
+          
+          // Error feedback
+          div.style.background = '#cc0000';
+          setTimeout(() => {
+            div.style.background = '#2a2a2a';
+          }, 500);
+        }
+      });
+      
+      return div;
+    }
+    
+    function updateInstanceElement(element, instance) {
+      // Update session duration with live calculation
+      const sessionDurationEl = element.querySelector('.session-duration');
+      if (sessionDurationEl) {
+        const liveDuration = instance.startTimestamp ? calculateLiveDuration(instance.startTimestamp) : instance.elapsedTime;
+        if (sessionDurationEl.textContent !== liveDuration) {
+          sessionDurationEl.textContent = liveDuration;
+        }
+      }
+      
+      // Update class names based on current state
+      let className = 'instance';
+      if (instance.isHeadless) className += ' headless';
+      if (instance.activityState === 'working') className += ' working';
+      if (instance.activityState === 'thinking') className += ' thinking';
+      
+      if (element.className !== className) {
+        element.className = className;
+      }
+      
+      // Update headless status if changed
+      const statusEl = element.querySelector('.status');
+      const expectedStatusText = instance.isHeadless ? 'HEADLESS' : 'INTERACTIVE';
+      const expectedStatusClass = `status ${instance.isHeadless ? 'headless' : ''}`;
+      
+      if (statusEl.textContent !== expectedStatusText) {
+        statusEl.textContent = expectedStatusText;
+      }
+      if (statusEl.className !== expectedStatusClass) {
+        statusEl.className = expectedStatusClass;
+      }
+      
+      const pidEl = element.querySelector('.pid');
+      const expectedPidColor = instance.isHeadless ? '#ff6b35' : '#0066cc';
+      if (pidEl.style.color !== expectedPidColor) {
+        pidEl.style.color = expectedPidColor;
+      }
+      
+      // Update working directory name and full path if changed
+      const workingDirNameEl = element.querySelector('.working-dir-name');
+      const fullPathEl = element.querySelector('.full-path');
+      const dirName = instance.workingDirectory.split('/').pop() || instance.workingDirectory;
+      
+      if (workingDirNameEl && workingDirNameEl.textContent !== dirName) {
+        workingDirNameEl.textContent = dirName;
+      }
+      
+      if (fullPathEl && fullPathEl.textContent !== instance.workingDirectory) {
+        fullPathEl.textContent = instance.workingDirectory;
+      }
+      
+      // Update TTY if changed
+      const ttyEl = element.querySelector('.tty');
+      if (ttyEl.textContent !== instance.tty) {
+        ttyEl.textContent = instance.tty;
+        element.dataset.tty = instance.tty;
+      }
+      
+      // Update activity indicator
+      const activityEl = element.querySelector('.activity');
+      if (activityEl.textContent.trim() !== instance.activityIndicator) {
+        activityEl.textContent = instance.activityIndicator;
+        activityEl.className = `activity activity-${instance.activityState}`;
+        activityEl.title = `${instance.activityState} (${instance.cpuPercent}% CPU)`;
+      }
+      
+      // Update development activity metrics
+      const activityMeterEl = element.querySelector('.activity-meter');
+      if (activityMeterEl && instance.modelInfo && instance.modelInfo.sessionStats) {
+        const stats = instance.modelInfo.sessionStats;
+        const expectedHTML = `
+          <div class="message-count">${stats.messageCount} msgs</div>
+          <div class="dev-activity ${stats.conversationLength > 20 ? 'high' : stats.conversationLength > 5 ? 'medium' : ''}">${stats.conversationLength} exchanges</div>
+        `.trim();
+        
+        if (activityMeterEl.innerHTML.trim() !== expectedHTML) {
+          activityMeterEl.innerHTML = expectedHTML;
+        }
+      }
+      
+      // Update git info in details row
+      const gitRepoEl = element.querySelector('.git-repo-info');
+      const gitBranchEl = element.querySelector('.git-branch-info');
+      const shouldHaveGit = instance.gitInfo && instance.gitInfo.hasGit;
+      
+      if (gitRepoEl) {
+        if (shouldHaveGit) {
+          const repoText = instance.gitInfo.repoOwner && instance.gitInfo.repoName ? 
+            `${instance.gitInfo.repoOwner}/${instance.gitInfo.repoName}` : 'local repo';
+          if (gitRepoEl.textContent !== repoText) {
+            gitRepoEl.textContent = repoText;
+          }
+        } else {
+          gitRepoEl.textContent = '';
+        }
+      }
+      
+      if (gitBranchEl) {
+        if (shouldHaveGit) {
+          if (gitBranchEl.textContent !== instance.gitInfo.branchName) {
+            gitBranchEl.textContent = instance.gitInfo.branchName;
+          }
+        } else {
+          gitBranchEl.textContent = '';
+        }
+      }
+      
+      // Update model info
+      const existingModelEl = element.querySelector('.model-info');
+      const shouldHaveModel = instance.modelInfo && instance.modelInfo.hasModel;
+      
+      if (existingModelEl) {
+        if (shouldHaveModel) {
+          const modelNameEl = existingModelEl.querySelector('.model-name');
+          const modelText = instance.modelInfo.modelAlias || instance.modelInfo.model;
+          
+          if (modelNameEl && modelNameEl.textContent !== modelText) {
+            modelNameEl.textContent = modelText;
+          }
+          
+          // Show model info if no content
+          if (!existingModelEl.innerHTML.trim()) {
+            existingModelEl.innerHTML = `
+              <span>🤖</span>
+              <span class="model-name">${modelText}</span>
+            `;
+          }
+        } else {
+          existingModelEl.innerHTML = '';
+        }
+      }
+    }
+    
+    async function loadInstances() {
+      const container = document.getElementById('instances-container');
+      
+      try {
+        const instances = await ipcRenderer.invoke('get-claude-instances');
+        const newInstancesMap = new Map(instances.map(i => [i.pid, i]));
+        
+        // Handle empty state
+        if (instances.length === 0) {
+          if (!container.querySelector('.no-instances')) {
+            container.innerHTML = '<div class="no-instances">No Claude Code instances running</div>';
+          }
+          currentInstances.clear();
+          return;
+        }
+        
+        // Remove no-instances or loading message if present
+        const noInstancesEl = container.querySelector('.no-instances, .loading');
+        if (noInstancesEl) {
+          noInstancesEl.remove();
+        }
+        
+        // Get current instance elements
+        const currentElements = new Map();
+        container.querySelectorAll('.instance[data-pid]').forEach(el => {
+          currentElements.set(parseInt(el.dataset.pid), el);
+        });
+        
+        // Remove instances that no longer exist
+        for (const [pid, element] of currentElements) {
+          if (!newInstancesMap.has(pid)) {
+            element.remove();
+            currentInstances.delete(pid);
+          }
+        }
+        
+        // Add or update instances
+        instances.forEach(instance => {
+          const existingElement = currentElements.get(instance.pid);
+          
+          if (existingElement) {
+            // Update existing element
+            updateInstanceElement(existingElement, instance);
+          } else {
+            // Add new element
+            const newElement = createInstanceElement(instance);
+            container.appendChild(newElement);
+          }
+          
+          currentInstances.set(instance.pid, instance);
+        });
+        
+      } catch (error) {
+        if (!container.querySelector('.no-instances')) {
+          container.innerHTML = `<div class="no-instances">Error loading instances: ${error.message}</div>`;
+        }
+        currentInstances.clear();
+      }
+    }
+    
+    function refreshInstances() {
+      loadInstances();
+    }
+    
+    // Load instances on startup
+    loadInstances();
+    
+    // Auto-refresh every 5 seconds
+    setInterval(loadInstances, 5000);
+    
+    // Update live durations every second
+    setInterval(() => {
+      document.querySelectorAll('.session-duration').forEach(el => {
+        const instanceElement = el.closest('.instance');
+        const pid = parseInt(instanceElement.dataset.pid);
+        const instance = currentInstances.get(pid);
+        
+        if (instance && instance.startTimestamp) {
+          const liveDuration = calculateLiveDuration(instance.startTimestamp);
+          if (el.textContent !== liveDuration) {
+            el.textContent = liveDuration;
+          }
+        }
+      });
+    }, 1000);
+  </script>
+</body>
+</html>
