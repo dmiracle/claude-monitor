@@ -6,7 +6,7 @@ let mainWindow;
 let isMinimizedMode = false;
 
 const EXPANDED_SIZE = { width: 580, height: 380 };
-const MINIMIZED_SIZE = { width: 200, height: 150 };
+const MINIMIZED_SIZE = { width: 200, minHeight: 100 };
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -667,14 +667,34 @@ ipcMain.handle('toggle-window-size', async (event, minimize) => {
     isMinimizedMode = minimize;
     
     if (minimize) {
-      mainWindow.setSize(MINIMIZED_SIZE.width, MINIMIZED_SIZE.height);
+      mainWindow.setSize(MINIMIZED_SIZE.width, MINIMIZED_SIZE.minHeight);
       mainWindow.setResizable(false);
+      mainWindow.setMinimumSize(MINIMIZED_SIZE.width, MINIMIZED_SIZE.minHeight);
+      mainWindow.setMaximumSize(MINIMIZED_SIZE.width, 600); // Allow vertical growth
     } else {
       mainWindow.setSize(EXPANDED_SIZE.width, EXPANDED_SIZE.height);
       mainWindow.setResizable(true);
+      mainWindow.setMinimumSize(400, 200);
+      mainWindow.setMaximumSize(0, 0); // Remove max size constraints
     }
     
     return { success: true, minimized: minimize };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+// IPC handler to update window height based on content
+ipcMain.handle('update-window-height', async (event, instanceCount) => {
+  if (!mainWindow || !isMinimizedMode) return { success: false };
+  
+  try {
+    const tileHeight = 80; // Height per tile
+    const padding = 20; // Top and bottom padding
+    const newHeight = Math.max(MINIMIZED_SIZE.minHeight, (instanceCount * tileHeight) + padding);
+    
+    mainWindow.setSize(MINIMIZED_SIZE.width, newHeight);
+    return { success: true, height: newHeight };
   } catch (error) {
     return { success: false, error: error.message };
   }

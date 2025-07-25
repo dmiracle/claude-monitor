@@ -382,84 +382,163 @@
       padding: 20px;
     }
     
-    /* Minimized view styles - ultra compact */
-    .instances-container.minimized {
-      padding: 0;
+    /* Minimized view styles - tile-based layout */
+    body.minimized {
+      padding: 8px;
     }
     
-    .instances-container.minimized .header {
-      display: none !important;
-    }
-    
-    .instances-container.minimized .instance {
-      padding: 3px 6px;
-      margin-bottom: 2px;
-      border-radius: 3px;
-      border-left-width: 2px;
-    }
-    
-    .instances-container.minimized .instance-path,
-    .instances-container.minimized .instance-details,
-    .instances-container.minimized .full-path,
-    .instances-container.minimized .activity-meter,
-    .instances-container.minimized .git-repo-info,
-    .instances-container.minimized .git-branch-info,
-    .instances-container.minimized .model-info,
-    .instances-container.minimized .process-info .tty,
-    .instances-container.minimized .status {
-      display: none !important;
-    }
-    
-    .instances-container.minimized .instance-header {
-      grid-template-columns: auto 1fr auto;
-      gap: 4px;
-      margin-bottom: 0;
-    }
-    
-    .instances-container.minimized .working-dir-name {
-      font-size: 9px;
-      font-weight: 600;
-      text-overflow: ellipsis;
-      overflow: hidden;
-      white-space: nowrap;
-    }
-    
-    .instances-container.minimized .working-dir-name::before {
-      display: none;
-    }
-    
-    .instances-container.minimized .session-duration {
-      font-size: 8px;
-      padding: 1px 3px;
-      border-radius: 6px;
-    }
-    
-    .instances-container.minimized .activity {
-      width: 12px;
-      height: 12px;
-      font-size: 10px;
-    }
-    
-    .instances-container.minimized .pid {
-      font-size: 8px;
-      font-weight: 500;
-    }
-    
-    .instances-container.minimized .process-info {
-      gap: 3px;
-    }
-    
-    /* Hide header when minimized */
     body.minimized .header {
       display: none !important;
     }
     
-    body.minimized {
-      padding: 4px;
-    }
-    
     body.minimized #instances-container {
       margin-top: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    
+    .instances-container.minimized .instance {
+      width: 180px;
+      height: 75px;
+      padding: 6px;
+      margin-bottom: 0;
+      border-radius: 6px;
+      border: 2px solid;
+      border-color: #007acc;
+      background: #2a2a2a;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    .instances-container.minimized .instance:hover {
+      background: #333;
+      border-color: #4CAF50;
+      transform: scale(1.02);
+    }
+    
+    .instances-container.minimized .instance.headless {
+      border-color: #f14c4c;
+    }
+    
+    .instances-container.minimized .instance.working {
+      border-color: #4ec9b0;
+      background: #2a2d2a;
+    }
+    
+    .instances-container.minimized .instance.thinking {
+      border-color: #dcdcaa;
+      background: #2d2a2a;
+    }
+    
+    /* Hide all original content */
+    .instances-container.minimized .instance-header,
+    .instances-container.minimized .instance-path,
+    .instances-container.minimized .instance-details {
+      display: none !important;
+    }
+    
+    /* Tile header */
+    .tile-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+    
+    .tile-title {
+      font-size: 10px;
+      font-weight: 600;
+      color: #f0f0f0;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      white-space: nowrap;
+      flex: 1;
+      margin-right: 4px;
+    }
+    
+    .tile-indicators {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+    
+    .tile-git-icon {
+      font-size: 10px;
+      color: #666;
+    }
+    
+    .tile-git-icon.has-git {
+      color: #f14c4c;
+    }
+    
+    .tile-activity {
+      font-size: 12px;
+      width: 16px;
+      height: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background: rgba(0, 122, 204, 0.2);
+    }
+    
+    .tile-activity.working {
+      background: rgba(78, 201, 176, 0.2);
+      color: #4ec9b0;
+    }
+    
+    .tile-activity.thinking {
+      background: rgba(220, 220, 170, 0.2);
+      color: #dcdcaa;
+    }
+    
+    .tile-activity.idle {
+      background: rgba(133, 133, 133, 0.2);
+      color: #858585;
+    }
+    
+    /* Tile content */
+    .tile-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+    
+    .tile-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    
+    .tile-pid {
+      font-size: 8px;
+      color: #569cd6;
+      font-family: 'SF Mono', Consolas, monospace;
+      font-weight: 500;
+    }
+    
+    .tile-headless {
+      font-size: 7px;
+      color: #f14c4c;
+      background: rgba(241, 76, 76, 0.2);
+      padding: 1px 3px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+    
+    .tile-duration {
+      font-size: 8px;
+      color: #4fc1ff;
+      background: rgba(79, 193, 255, 0.1);
+      padding: 2px 4px;
+      border-radius: 6px;
+      font-family: 'SF Mono', Consolas, monospace;
+      align-self: flex-end;
     }
   </style>
 </head>
@@ -505,7 +584,7 @@
       }
     }
     
-    function createInstanceElement(instance) {
+    function createInstanceElement(instance) {        
       const div = document.createElement('div');
       let className = 'instance';
       if (instance.isHeadless) className += ' headless';
@@ -515,8 +594,34 @@
       div.className = className;
       div.dataset.pid = instance.pid;
       div.dataset.tty = instance.tty;
+      
       // Extract directory name from full path
       const dirName = instance.workingDirectory.split('/').pop() || instance.workingDirectory;
+      
+      // Create tile content for minimized view
+      const tileContent = `
+        <div class="tile-header">
+          <div class="tile-title">${dirName}</div>
+          <div class="tile-indicators">
+            <div class="tile-git-icon ${instance.gitInfo && instance.gitInfo.hasGit ? 'has-git' : ''}">
+              ${instance.gitInfo && instance.gitInfo.hasGit ? '📂' : '📄'}
+            </div>
+            <div class="tile-activity ${instance.activityState}">
+              ${instance.activityIndicator}
+            </div>
+          </div>
+        </div>
+        <div class="tile-content">
+          <div class="tile-info">
+            <div class="tile-pid">PID ${instance.pid}</div>
+            ${instance.isHeadless ? '<div class="tile-headless">HEADLESS</div>' : ''}
+          </div>
+          <div class="tile-duration">${instance.startTimestamp ? calculateLiveDuration(instance.startTimestamp) : instance.elapsedTime}</div>
+        </div>
+      `;
+      
+      // Store both contents in the element
+      div.dataset.tileContent = tileContent;
       
       div.innerHTML = `
         <div class="instance-header">
@@ -779,6 +884,19 @@
           currentInstances.set(instance.pid, instance);
         });
         
+        // Update window height if in minimized mode
+        if (isMinimized) {
+          // Switch to tile content for new elements
+          document.querySelectorAll('.instance').forEach(el => {
+            if (el.dataset.tileContent && document.body.classList.contains('minimized')) {
+              el.innerHTML = el.dataset.tileContent;
+            }
+          });
+          
+          // Update window height
+          ipcRenderer.invoke('update-window-height', instances.length);
+        }
+        
       } catch (error) {
         if (!container.querySelector('.no-instances')) {
           container.innerHTML = `<div class="no-instances">Error loading instances: ${error.message}</div>`;
@@ -806,10 +924,25 @@
             container.classList.add('minimized');
             document.body.classList.add('minimized');
             toggleBtn.textContent = 'Expand';
+            
+            // Switch to tile content
+            document.querySelectorAll('.instance').forEach(el => {
+              if (el.dataset.tileContent) {
+                el.innerHTML = el.dataset.tileContent;
+              }
+            });
+            
+            // Update window height based on number of instances
+            const instanceCount = document.querySelectorAll('.instance').length;
+            ipcRenderer.invoke('update-window-height', instanceCount);
+            
           } else {
             container.classList.remove('minimized');
             document.body.classList.remove('minimized');
             toggleBtn.textContent = 'Minimize';
+            
+            // Reload instances to restore expanded content
+            loadInstances();
           }
           
           // Store preference in localStorage
