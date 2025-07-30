@@ -74,3 +74,6 @@ packages/
 # Temporary files
 tmp/
 temp/
+
+# Project configuration files
+CLAUDE.md
