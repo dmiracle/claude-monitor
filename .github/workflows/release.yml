@@ -61,7 +61,7 @@ jobs:
             fi
           done
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
 
       - name: Upload build artifacts as workflow artifacts
         uses: actions/upload-artifact@v4
