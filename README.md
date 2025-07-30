@@ -10,6 +10,7 @@ An Electron app that displays a small window showing all running Claude Code ins
 - Displays working directory for each instance
 - Shows session elapsed time
 - Indicates whether instances are headless or interactive
+- Displays which model is being used
 - Auto-refreshes every 5 seconds
 - Focusable window that can lose focus when needed
 - Clean, dark UI optimized for development
