@@ -14,6 +14,7 @@ function createWindow() {
     height: EXPANDED_SIZE.height,
     frame: true,
     resizable: true,
+    icon: path.join(__dirname, '../build/icon.icns'),
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false
