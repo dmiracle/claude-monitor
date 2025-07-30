@@ -837,7 +837,7 @@
   </div>
 
   <script>
-    const { ipcRenderer } = require('electron');
+    // Use secure electronAPI instead of direct ipcRenderer
     let currentInstances = new Map();
     let isMinimized = false;
     let currentDetailInstance = null;
@@ -971,7 +971,7 @@
             console.log(`Activating window for process ${instance.pid} (TTY: ${instance.tty})`);
           }
           
-          const result = await ipcRenderer.invoke('activate-window', instance.pid, instance.tty, instance.workingDirectory);
+          const result = await window.electronAPI.activateWindow(instance.pid, instance.tty, instance.workingDirectory);
           console.log('Window activation result:', result);
           
           // Visual feedback
@@ -1190,7 +1190,7 @@
       const container = document.getElementById('instances-container');
       
       try {
-        const instances = await ipcRenderer.invoke('get-claude-instances');
+        const instances = await window.electronAPI.getClaudeInstances();
         const newInstancesMap = new Map(instances.map(i => [i.pid, i]));
         
         // Handle empty state
@@ -1248,7 +1248,7 @@
           });
           
           // Update window height
-          ipcRenderer.invoke('update-window-height', instances.length);
+          window.electronAPI.updateWindowHeight(instances.length);
         }
         
       } catch (error) {
@@ -1271,7 +1271,7 @@
       
       try {
         // Resize the window first
-        const result = await ipcRenderer.invoke('toggle-window-size', isMinimized);
+        const result = await window.electronAPI.toggleWindowSize(isMinimized);
         
         if (result.success) {
           if (isMinimized) {
@@ -1288,7 +1288,7 @@
             
             // Update window height based on number of instances
             const instanceCount = document.querySelectorAll('.instance').length;
-            ipcRenderer.invoke('update-window-height', instanceCount);
+            window.electronAPI.updateWindowHeight(instanceCount);
             
           } else {
             container.classList.remove('minimized');
@@ -1394,7 +1394,7 @@
       // Get additional details (MCP tools, etc.)
       try {
         console.log('Getting details for instance:', pid, instance.workingDirectory);
-        const detailInfo = await ipcRenderer.invoke('get-instance-details', pid, instance.workingDirectory);
+        const detailInfo = await window.electronAPI.getInstanceDetails(pid, instance.workingDirectory);
         console.log('Received detail info:', detailInfo);
         
         // Debug: Add a visual indicator

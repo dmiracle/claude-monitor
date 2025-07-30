@@ -6,7 +6,6 @@ yarn-error.log*
 
 # Build outputs
 dist/
-build/
 out/
 
 # OS generated files

@@ -3,7 +3,14 @@
   "version": "1.0.0",
   "description": "Monitor running Claude Code instances",
   "main": "src/main.js",
+  "author": "Dylan Miracle",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dmiracle/claude-monitor.git"
+  },
+  "homepage": "https://github.com/dmiracle/claude-monitor",
+  "keywords": ["claude", "electron", "monitoring", "developer-tools", "ai"],
   "scripts": {
     "start": "electron .",
     "dev": "electron . --dev",
@@ -15,7 +22,7 @@
     "electron-builder": "^24.0.0"
   },
   "build": {
-    "appId": "com.dylan.claude-monitor",
+    "appId": "com.github.dmiracle.claude-monitor",
     "productName": "Claude Monitor",
     "directories": {
       "buildResources": "build"
