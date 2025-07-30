@@ -14,6 +14,7 @@ function createWindow() {
     height: EXPANDED_SIZE.height,
     frame: true,
     resizable: true,
+    icon: path.join(__dirname, '../build/icon.icns'),
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false
@@ -698,5 +699,172 @@ ipcMain.handle('update-window-height', async (event, instanceCount) => {
     return { success: true, height: newHeight };
   } catch (error) {
     return { success: false, error: error.message };
+  }
+});
+
+// IPC handler to get detailed instance information
+ipcMain.handle('get-instance-details', async (event, pid, workingDirectory) => {
+  try {
+    const details = {
+      mcpTools: [],
+      agents: []
+    };
+    
+    // Try to find MCP configuration file
+    const fs = require('fs');
+    const path = require('path');
+    
+    // Look for Claude configuration
+    const possibleConfigPaths = [
+      path.join(workingDirectory, '.claude', 'claude_desktop_config.json'),
+      path.join(workingDirectory, 'claude_desktop_config.json'),
+      path.join(require('os').homedir(), '.claude', 'claude_desktop_config.json'),
+      path.join(require('os').homedir(), 'Library', 'Application Support', 'Claude', 'claude_desktop_config.json'),
+      path.join('/Users', process.env.USER, 'Library', 'Application Support', 'Claude', 'claude_desktop_config.json')
+    ];
+    
+    console.log('Searching for MCP configuration in:', possibleConfigPaths);
+    
+    for (const configPath of possibleConfigPaths) {
+      try {
+        if (fs.existsSync(configPath)) {
+          console.log(`Found config file at: ${configPath}`);
+          const configContent = fs.readFileSync(configPath, 'utf8');
+          const config = JSON.parse(configContent);
+          
+          console.log('Config keys:', Object.keys(config));
+          
+          // Extract MCP tools from config - check both mcpServers and mcp_servers
+          const servers = config.mcpServers || config.mcp_servers || config.mcpTools;
+          
+          if (servers) {
+            console.log(`Found MCP servers:`, Object.keys(servers));
+            for (const [serverName, serverConfig] of Object.entries(servers)) {
+              console.log(`Processing server: ${serverName}`, serverConfig);
+              details.mcpTools.push({
+                name: serverName,
+                type: serverConfig.command ? 'Local Server' : 'Remote Server',
+                command: serverConfig.command,
+                args: serverConfig.args
+              });
+            }
+          } else {
+            console.log('No MCP servers found in config');
+          }
+          
+          break; // Found config, stop searching
+        }
+      } catch (error) {
+        console.error(`Error reading config from ${configPath}:`, error);
+      }
+    }
+    
+    console.log('Final MCP tools found:', details.mcpTools);
+    
+    // Look for agents configuration
+    const agentConfigPaths = [
+      path.join(workingDirectory, '.claude', 'agents.json'),
+      path.join(workingDirectory, 'agents.json'),
+      path.join(require('os').homedir(), '.claude', 'agents.json')
+    ];
+    
+    // Also check for CLAUDE.md which might define custom agents
+    const claudeMdPaths = [
+      path.join(workingDirectory, 'CLAUDE.md'),
+      path.join(workingDirectory, '.claude', 'CLAUDE.md')
+    ];
+    
+    // Check agents.json files
+    for (const agentPath of agentConfigPaths) {
+      try {
+        if (fs.existsSync(agentPath)) {
+          const agentContent = fs.readFileSync(agentPath, 'utf8');
+          const agentConfig = JSON.parse(agentContent);
+          
+          if (Array.isArray(agentConfig)) {
+            details.agents = agentConfig;
+          } else if (agentConfig.agents && Array.isArray(agentConfig.agents)) {
+            details.agents = agentConfig.agents;
+          }
+          
+          break; // Found agents config
+        }
+      } catch (error) {
+        console.error(`Error reading agents from ${agentPath}:`, error);
+      }
+    }
+    
+    // Check CLAUDE.md for custom agent definitions
+    for (const claudePath of claudeMdPaths) {
+      try {
+        if (fs.existsSync(claudePath) && details.agents.length === 0) {
+          const claudeContent = fs.readFileSync(claudePath, 'utf8');
+          
+          // Look for agent definitions in CLAUDE.md
+          const agentMatches = claudeContent.match(/## Custom Agents?\s*\n([\s\S]*?)(?=\n##|$)/i);
+          if (agentMatches) {
+            const agentSection = agentMatches[1];
+            // Parse agent definitions (simple pattern matching)
+            const agentDefs = agentSection.match(/- \*\*([^*]+)\*\*:?\s*([^\n]+)/g);
+            if (agentDefs) {
+              agentDefs.forEach(def => {
+                const match = def.match(/- \*\*([^*]+)\*\*:?\s*(.+)/);
+                if (match) {
+                  details.agents.push({
+                    name: match[1].trim(),
+                    description: match[2].trim(),
+                    source: 'CLAUDE.md'
+                  });
+                }
+              });
+            }
+          }
+        }
+      } catch (error) {
+        console.error(`Error reading CLAUDE.md from ${claudePath}:`, error);
+      }
+    }
+    
+    // Add built-in Claude agents that are always available
+    const builtInAgents = [
+      {
+        name: 'general-purpose',
+        description: 'General-purpose agent for researching complex questions and multi-step tasks',
+        builtin: true
+      }
+    ];
+    
+    // Merge built-in agents with custom ones
+    details.agents = [...builtInAgents, ...details.agents];
+    
+    // Get additional process info
+    const psInfo = spawn('ps', ['-p', pid.toString(), '-o', 'rss,vsz,comm']);
+    let psOutput = '';
+    
+    psInfo.stdout.on('data', (data) => {
+      psOutput += data.toString();
+    });
+    
+    await new Promise((resolve) => {
+      psInfo.on('close', () => {
+        const lines = psOutput.split('\n');
+        if (lines.length > 1) {
+          const parts = lines[1].trim().split(/\s+/);
+          if (parts.length >= 3) {
+            details.memoryInfo = {
+              rss: parseInt(parts[0]) * 1024, // Convert KB to bytes
+              vsz: parseInt(parts[1]) * 1024
+            };
+          }
+        }
+        resolve();
+      });
+    });
+    
+    console.log('Returning details from IPC handler:', JSON.stringify(details, null, 2));
+    return details;
+  } catch (error) {
+    console.error('Error getting instance details:', error);
+    return { mcpTools: [], agents: [] };
   }
 });
