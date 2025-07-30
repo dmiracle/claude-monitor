@@ -3,18 +3,11 @@ name: Release Build
 on:
   release:
     types: [published]
-  workflow_dispatch:
-    inputs:
-      create_release:
-        description: 'Create a test release'
-        required: false
-        default: 'false'
-        type: boolean
 
 jobs:
   build:
     runs-on: macos-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -22,7 +15,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '24'
           cache: 'npm'
 
       - name: Install dependencies
@@ -32,7 +25,7 @@ jobs:
         run: |
           echo "Generating icon files..."
           make icon
-          
+
           echo "Verifying icon files:"
           ls -la build/
 
@@ -40,7 +33,7 @@ jobs:
         run: |
           echo "Building Electron application..."
           npm run build
-          
+
           echo "Build completed. Checking output:"
           ls -la dist/
         env:
@@ -59,9 +52,9 @@ jobs:
               filename=$(basename "$dmg_file")
               # Clean filename for release asset
               clean_name=$(echo "$filename" | sed 's/ /-/g')
-              
+
               echo "Uploading $dmg_file as $clean_name"
-              
+
               gh release upload ${{ github.event.release.tag_name }} \
                 "$dmg_file#$clean_name" \
                 --clobber
