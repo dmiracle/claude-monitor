@@ -26,12 +26,50 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          echo "Installing dependencies..."
+          npm ci
+          echo "Dependencies installed successfully"
 
       - name: Generate icon files
         run: |
           echo "Generating icon files..."
-          make icon
+          
+          # Check if Makefile exists
+          if [ ! -f "Makefile" ]; then
+            echo "Warning: Makefile not found, creating icon files manually"
+            mkdir -p build
+            
+            # Check if source PNG exists
+            if [ -f "build/icon.png" ]; then
+              echo "Icon PNG already exists: $(ls -la build/icon.png)"
+            else
+              echo "Error: No source icon.png found in build/ directory"
+              ls -la build/ || echo "build/ directory not found"
+              exit 1
+            fi
+            
+            # Generate ICNS if not exists
+            if [ ! -f "build/icon.icns" ]; then
+              echo "Converting PNG to ICNS..."
+              mkdir -p icon.iconset
+              sips -z 16 16 build/icon.png --out icon.iconset/icon_16x16.png
+              sips -z 32 32 build/icon.png --out icon.iconset/icon_16x16@2x.png
+              sips -z 32 32 build/icon.png --out icon.iconset/icon_32x32.png
+              sips -z 64 64 build/icon.png --out icon.iconset/icon_32x32@2x.png
+              sips -z 128 128 build/icon.png --out icon.iconset/icon_128x128.png
+              sips -z 256 256 build/icon.png --out icon.iconset/icon_128x128@2x.png
+              sips -z 256 256 build/icon.png --out icon.iconset/icon_256x256.png
+              sips -z 512 512 build/icon.png --out icon.iconset/icon_256x256@2x.png
+              sips -z 512 512 build/icon.png --out icon.iconset/icon_512x512.png
+              sips -z 1024 1024 build/icon.png --out icon.iconset/icon_512x512@2x.png
+              iconutil -c icns icon.iconset
+              mv icon.icns build/
+              rm -rf icon.iconset
+            fi
+          else
+            make icon
+          fi
 
           echo "Verifying icon files:"
           ls -la build/
@@ -39,18 +77,59 @@ jobs:
       - name: Build Electron application
         run: |
           echo "Building Electron application..."
+          echo "Current directory: $(pwd)"
+          echo "Available npm scripts:"
+          npm run --silent 2>/dev/null || echo "No npm scripts available"
+          
+          echo "Package.json build config:"
+          cat package.json | grep -A 20 '"build"' || echo "No build config found"
+          
           npm run build
 
           echo "Build completed. Checking output:"
-          ls -la dist/
+          if [ -d "dist" ]; then
+            ls -la dist/
+            echo "Dist contents:"
+            find dist/ -type f -exec ls -la {} \; 2>/dev/null || echo "No files in dist"
+          else
+            echo "Warning: dist directory not created"
+            echo "Current directory contents:"
+            ls -la
+          fi
         env:
           NODE_ENV: production
           CI: true
+          DEBUG: electron-builder
 
-      - name: List build artifacts
+      - name: Detailed artifact analysis
         run: |
-          echo "Build artifacts created:"
-          ls -la dist/
+          echo "=== Detailed Build Artifact Analysis ==="
+          
+          if [ -d "dist" ]; then
+            echo "Dist directory exists:"
+            ls -la dist/
+            
+            echo "\nAll files in dist (recursive):"
+            find dist/ -type f -exec ls -lah {} \; 2>/dev/null || echo "No files found"
+            
+            echo "\nFile types in dist:"
+            find dist/ -type f -exec file {} \; 2>/dev/null || echo "Cannot determine file types"
+            
+            echo "\nSearching for DMG files specifically:"
+            find . -name "*.dmg" -exec ls -lah {} \; 2>/dev/null || echo "No DMG files found"
+            
+            echo "\nSearching for other common Electron build outputs:"
+            find . -name "*.app" -exec ls -lah {} \; 2>/dev/null || echo "No .app bundles found"
+            find . -name "*.zip" -exec ls -lah {} \; 2>/dev/null || echo "No ZIP files found"
+            find . -name "*.tar.gz" -exec ls -lah {} \; 2>/dev/null || echo "No tar.gz files found"
+          else
+            echo "ERROR: dist directory does not exist!"
+            echo "Current directory contents:"
+            ls -la
+            
+            echo "\nChecking for electron-builder output in other locations:"
+            find . -name "*.dmg" -o -name "*.app" -o -name "*.zip" | head -10
+          fi
 
       - name: Find and upload DMG files to release
         if: github.event_name == 'release'
@@ -71,23 +150,73 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Debug output (manual dispatch only)
+      - name: Enhanced debug output
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.debug == 'true'
         run: |
-          echo "=== Debug Information ==="
+          echo "=== Enhanced Debug Information ==="
           echo "Event name: ${{ github.event_name }}"
           echo "Debug enabled: ${{ github.event.inputs.debug }}"
-          echo "Build artifacts:"
-          find dist/ -type f || echo "No dist directory found"
-          echo "=== Environment ==="
-          env | grep -E "(GITHUB_|NODE_)" | sort
+          echo "Runner OS: ${{ runner.os }}"
+          echo "GitHub workspace: ${{ github.workspace }}"
+          
+          echo "\n=== System Information ==="
+          uname -a
+          sw_vers || echo "Not macOS"
+          
+          echo "\n=== Node/NPM Information ==="
+          node --version
+          npm --version
+          
+          echo "\n=== Electron Builder Information ==="
+          npx electron-builder --version || echo "electron-builder not available"
+          
+          echo "\n=== Package.json ==="
+          cat package.json
+          
+          echo "\n=== Build artifacts search ==="
+          find . -name "*.dmg" -o -name "*.app" -o -name "*.zip" -o -name "*.tar.gz" | head -20
+          
+          echo "\n=== Environment Variables ==="
+          env | grep -E "(GITHUB_|NODE_|ELECTRON_|CI)" | sort
+          
+          echo "\n=== Disk Space ==="
+          df -h
+          
+          echo "\n=== Full directory tree (limited) ==="
+          find . -type f | head -50
 
       - name: Upload build artifacts as workflow artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: macos-build-artifacts
+          name: macos-build-artifacts-${{ github.run_number }}
           path: |
-            dist/*.dmg
-            dist/*.zip
-            dist/*.tar.gz
+            dist/
+            build/
+            *.dmg
+            *.zip
+            *.tar.gz
+            **/*.dmg
+            **/*.zip
+            **/*.tar.gz
           retention-days: 30
+          if-no-files-found: warn
+
+      - name: Final artifact verification
+        run: |
+          echo "=== Final Artifact Verification ==="
+          echo "Files that will be uploaded as artifacts:"
+          
+          # Check each pattern
+          echo "\nChecking dist/:"
+          ls -la dist/ 2>/dev/null || echo "dist/ not found"
+          
+          echo "\nChecking build/:"
+          ls -la build/ 2>/dev/null || echo "build/ not found"
+          
+          echo "\nChecking for DMG files in root:"
+          ls -la *.dmg 2>/dev/null || echo "No DMG files in root"
+          
+          echo "\nChecking for DMG files anywhere:"
+          find . -name "*.dmg" -exec ls -la {} \; 2>/dev/null || echo "No DMG files found anywhere"
+          
+          echo "\nWorkflow artifacts will include any files matching the patterns above."
