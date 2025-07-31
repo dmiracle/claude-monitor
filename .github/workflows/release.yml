@@ -3,6 +3,13 @@ name: Release Build
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      debug:
+        description: 'Enable debug output'
+        required: false
+        default: 'false'
+        type: boolean
 
 jobs:
   build:
@@ -46,6 +53,7 @@ jobs:
           ls -la dist/
 
       - name: Find and upload DMG files to release
+        if: github.event_name == 'release'
         run: |
           for dmg_file in dist/*.dmg; do
             if [ -f "$dmg_file" ]; then
@@ -62,6 +70,17 @@ jobs:
           done
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Debug output (manual dispatch only)
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.debug == 'true'
+        run: |
+          echo "=== Debug Information ==="
+          echo "Event name: ${{ github.event_name }}"
+          echo "Debug enabled: ${{ github.event.inputs.debug }}"
+          echo "Build artifacts:"
+          find dist/ -type f || echo "No dist directory found"
+          echo "=== Environment ==="
+          env | grep -E "(GITHUB_|NODE_)" | sort
 
       - name: Upload build artifacts as workflow artifacts
         uses: actions/upload-artifact@v4
