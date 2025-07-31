@@ -24,6 +24,7 @@
   "build": {
     "appId": "com.github.dmiracle.claude-monitor",
     "productName": "Claude Monitor",
+    "publish": null,
     "directories": {
       "buildResources": "build"
     },
