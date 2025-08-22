@@ -48,11 +48,13 @@ dist: build
 # Install the built app to Applications (macOS only)
 install: build
 	@echo "📱 Installing Claude Monitor to Applications..."
-	@if [ -f "dist/Claude Monitor-1.0.0-arm64.dmg" ]; then \
-		open "dist/Claude Monitor-1.0.0-arm64.dmg"; \
+	@VERSION=$$(node -p "require('./package.json').version"); \
+	DMG_FILE="dist/Claude Monitor-$$VERSION-arm64.dmg"; \
+	if [ -f "$$DMG_FILE" ]; then \
+		open "$$DMG_FILE"; \
 		echo "✅ DMG opened - drag app to Applications folder"; \
 	else \
-		echo "❌ DMG not found. Run 'make build' first."; \
+		echo "❌ DMG not found at $$DMG_FILE. Run 'make build' first."; \
 	fi
 
 # Quick rebuild (clean + build)
